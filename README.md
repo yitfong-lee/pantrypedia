@@ -8,7 +8,7 @@ the rest are listed underneath, clearly separated. Open a recipe to see the
 quantities scaled to however many people you're feeding, and push whatever
 you're missing onto a shopping list you can take to the shop on your phone.
 
-- **296 ingredients, 353 recipes** — Chinese, Japanese, Korean, Thai, Indian,
+- **320 ingredients, 353 recipes** - Chinese, Japanese, Korean, Thai, Indian,
   Malaysian, Vietnamese and Indonesian, plus Western staples
 - **Aliases** — "green onion", "spring onion" and "scallion" are one chip, so a
   recipe written with different words still matches what you ticked
@@ -78,6 +78,24 @@ yourself with WhatsApp, Telegram, Phone Link, whatever you already use.
 
 ## Changelog
 
+**0.3.2** — ingredient lists now read like the page they came from. 0.3.1 kept
+the right *ingredients* but showed the pantry name for each one, so **Homemade
+Tempeh** said "soybean" instead of "dried soybeans" and lost the words "cider
+vinegar" and "tempeh starter". Each recipe line now carries the source's own
+wording and the app displays that, while matching your pantry by the canonical
+name underneath. A new `audit` command compares all 309 imported recipes against
+their Wikibooks pages line by line: phantom, missing, equipment-only and
+reworded lines are all zero (the one flag is Kuih Bakul's banana leaves, which
+really are an ingredient there). The audit also turned up wrong entries in the
+alias table — `konbu` and `bonito flakes` were aliases of *dashi*, `cider
+vinegar` of *vinegar*, `white pepper` of *black pepper*, `potato starch` of
+*cornstarch*, `split peas` of *lentils*, `mustard` of *mustard seeds*, and
+`coriander seeds` of *cilantro* — all of which put the wrong thing in a list.
+Those are now their own ingredients, and units, ranges ("¼–½ cup"), HTML
+entities ("&frac14; tsp") and mixed numbers ("2 ½") parse properly. The catalog
+grew from 296 to 320 ingredients, aliases from 423 to 544, and dropped lines
+from 256 to 175 (still almost all water and ice).
+
 **0.3.1** — imported recipes were quietly losing ingredients: the importer threw
 away any line it couldn't match, so **Tub Tim Krob** shipped without water
 chestnuts and **Kuih Bakul** without glutinous rice flour or banana leaves. The
@@ -132,7 +150,18 @@ Recipe data is regenerated with:
 node tools/import-wikibooks.mjs fetch   # cache raw wikitext (polite, rate-limited)
 node tools/import-wikibooks.mjs parse   # check what the parser gets out
 node tools/import-wikibooks.mjs build   # write src-tauri/data/seed.json
+node tools/import-wikibooks.mjs audit   # compare the seed against the source pages
 ```
+
+`audit` is the one that catches silent data loss. It walks every imported
+recipe and reports four kinds of problem: a stored line no bullet on the page
+can produce (*phantom*), a bullet naming real food that produced no row
+(*missing*), a row backed only by the *Equipment* list (*equipment*), and a row
+whose displayed wording does not appear on the page (*wording*). It writes
+`tools/.cache/audit.json` with the source and stored lists side by side, so a
+disagreement is easy to see. It should report `phantom: 0, missing: 0,
+wording: 0` — the single equipment row is Kuih Bakul's banana leaves, which are
+genuinely an ingredient there.
 
 `tools/ingredient-map.mjs` is the bridge between free-text recipe ingredients
 and the pantry catalog: which extra ingredients to add, and which names mean

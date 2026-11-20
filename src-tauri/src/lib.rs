@@ -39,6 +39,9 @@ struct IngredientRow {
 #[derive(Serialize)]
 struct IngredientLine {
     name: String,
+    /// the recipe's own wording when it is more specific than `name`
+    /// ("dried soybeans" for the soybeans chip); empty means use `name`
+    label: String,
     /// None = "to taste" (no number to scale)
     amount: Option<f64>,
     unit: String,
@@ -165,6 +168,14 @@ fn init_db(app: &AppHandle) -> Result<Connection, Box<dyn std::error::Error>> {
     add_column_if_missing(&conn, "recipe", "attribution", "TEXT")?;
     add_column_if_missing(&conn, "recipe_ingredient", "amount", "REAL")?;
     add_column_if_missing(&conn, "recipe_ingredient", "unit", "TEXT NOT NULL DEFAULT ''")?;
+    // the recipe's own wording ("dried soybeans"), shown instead of the
+    // catalog name ("soybean") so a list reads like the original page
+    add_column_if_missing(
+        &conn,
+        "recipe_ingredient",
+        "label",
+        "TEXT NOT NULL DEFAULT ''",
+    )?;
 
     // Every launch: make sure the catalog is present and up to date.
     // This is idempotent, so it is safe to run on every start - and it
@@ -236,6 +247,9 @@ struct SeedRecipe {
 #[derive(Deserialize)]
 struct SeedLine {
     name: String,
+    /// the recipe's own wording, e.g. "dried soybeans" for `soybean`
+    #[serde(default)]
+    label: String,
     amount: Option<f64>,
     unit: String,
 }
@@ -323,9 +337,9 @@ fn ensure_catalog(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
             };
             tx.execute(
                 "INSERT OR IGNORE INTO recipe_ingredient
-                     (recipe_id, ingredient_id, amount, unit)
-                 VALUES (?1, ?2, ?3, ?4)",
-                params![recipe_id, ingredient_id, line.amount, line.unit],
+                     (recipe_id, ingredient_id, amount, unit, label)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![recipe_id, ingredient_id, line.amount, line.unit, line.label],
             )?;
         }
     }
@@ -367,7 +381,8 @@ fn attach_ingredients(
     let sql = format!(
         "{cte}
         SELECT ri.recipe_id, i.name, ri.amount, ri.unit,
-               (p.ingredient_id IS NOT NULL) AS in_pantry
+               (p.ingredient_id IS NOT NULL) AS in_pantry,
+               COALESCE(NULLIF(ri.label, ''), i.name) AS shown
         FROM recipe_ingredient ri
         JOIN ingredient i ON i.id = ri.ingredient_id
         LEFT JOIN {pantry} p ON p.ingredient_id = ri.ingredient_id
@@ -380,6 +395,7 @@ fn attach_ingredients(
             row.get::<_, i64>(0)?,
             IngredientLine {
                 name: row.get(1)?,
+                label: row.get(5)?,
                 amount: row.get(2)?,
                 unit: row.get(3)?,
                 in_pantry: row.get(4)?,

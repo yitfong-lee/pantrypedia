@@ -143,8 +143,30 @@ function unlink(s) {
     );
 }
 
+/// Wikitext writes fractions and accents as HTML entities: "&frac14; tsp",
+/// "&frac12; cup", "cr&egrave;me". Decode the handful that turn up in
+/// ingredient lists, plus any numeric entity.
+const ENTITIES = {
+  frac12: "½", frac14: "¼", frac34: "¾", frac13: "⅓", frac23: "⅔", frac18: "⅛",
+  deg: "°", nbsp: " ", amp: "&", quot: '"', apos: "'", lt: "<", gt: ">",
+  eacute: "é", egrave: "è", agrave: "à", ccedil: "ç", uuml: "ü", ouml: "ö",
+  auml: "ä", ntilde: "ñ", ocirc: "ô", icirc: "î", ecirc: "ê", acirc: "â",
+};
+
+function decodeEntities(s) {
+  return s.replace(/&(#x?[0-9a-f]+|[a-z][a-z0-9]*);/gi, (whole, body) => {
+    if (body[0] === "#") {
+      const code = body[1] === "x" || body[1] === "X"
+        ? parseInt(body.slice(2), 16)
+        : parseInt(body.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
+    }
+    return ENTITIES[body.toLowerCase()] ?? whole;
+  });
+}
+
 function cleanLine(s) {
-  return unlink(stripRefs(s))
+  return decodeEntities(unlink(stripRefs(s)))
     .replace(/\{\{[^}]*\}\}/g, "")
     .replace(/'''?/g, "")
     .replace(/<[^>]+>/g, "")
@@ -191,11 +213,15 @@ function sections(wikitext) {
 
 const FRACTION = { "½": 0.5, "⅓": 1 / 3, "⅔": 2 / 3, "¼": 0.25, "¾": 0.75, "⅛": 0.125 };
 
-/// "1 1/2 cups" -> 1.5, "3-4" -> 3, "1–2" -> 1, "½" -> 0.5, "200" -> 200
+/// "1 1/2 cups" -> 1.5, "3-4" -> 3, "1–2" -> 1, "½" -> 0.5, "2 ½" -> 2.5,
+/// "200" -> 200
 function parseAmount(text) {
   const t = text.trim();
   const mixed = t.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)/);
   if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
+  // "2 ½ tsp salt": a whole number followed by a fraction glyph
+  const whole = t.match(/^(\d+)\s*([½⅓⅔¼¾⅛])/);
+  if (whole) return Number(whole[1]) + FRACTION[whole[2]];
   const frac = t.match(/^(\d+)\s*\/\s*(\d+)/);
   if (frac) return Number(frac[1]) / Number(frac[2]);
   const range = t.match(/^(\d+(?:\.\d+)?)\s*[–-]\s*\d/);
@@ -214,8 +240,11 @@ const UNIT_ALIASES = [
   [/\b(kilograms?|kgs?)\b/i, "kg"],
   [/\b(grams?|g)\b/i, "g"],
   [/\b(millilit(?:re|er)s?|ml)\b/i, "ml"],
+  [/\b(decilit(?:re|er)s?|dl)\b/i, "dl"],
+  [/\b(centilit(?:re|er)s?|cl)\b/i, "cl"],
   [/\b(lit(?:re|er)s?|l)\b/i, "l"],
   [/\b(cups?)\b/i, "cup"],
+  [/\b(pints?|pts?)\b/i, "pint"],
   [/\b(pounds?|lbs?)\b/i, "lb"],
   [/\b(ounces?|oz)\b/i, "oz"],
   [/\bcloves?\b/i, "clove"],
@@ -228,13 +257,35 @@ const UNIT_ALIASES = [
   [/\b(heads?)\b/i, "head"],
   [/\bpinch(?:es)?\b/i, "pinch"],
   [/\bhandfuls?\b/i, "handful"],
+  [/\b(packets?)\b/i, "packet"],
+  [/\b(pods?)\b/i, "pod"],
+  [/\b(cubes?)\b/i, "cube"],
+  [/\b(inch(?:es)?)\b/i, "in"],
+  [/\b(drops?)\b/i, "drop"],
+  [/\b(grinds?)\b/i, "grind"],
+  [/\b(quarts?)\b/i, "quart"],
+  [/\b(gallons?)\b/i, "gallon"],
 ];
 
+/// The unit word on an ingredient line: "3 large handfuls" ->
+/// { unit: "handful", word: "handfuls" }.
+///
+/// Scans the leading words left to right, so the *first* unit wins: "2 cups
+/// (480 ml)" is cups, not the ml in the conversion note. Only whole words
+/// count, so a name like "ground almonds" never turns into "g".
 function parseUnit(text) {
-  for (const [re, unit] of UNIT_ALIASES) {
-    if (re.test(text)) return unit;
+  // Only the words before a bracket or a comma can be the unit: "10 elackai
+  // (cardamom pods)" must not read "pods" as the unit.
+  const head = text.split(/[(\[]/)[0].split(",")[0];
+  const words = head.split(/\s+/).filter(Boolean).slice(0, 3);
+  for (const word of words) {
+    const bare = word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "");
+    if (!bare) continue;
+    for (const [re, unit] of UNIT_ALIASES) {
+      if (re.test(bare)) return { unit, word: bare };
+    }
   }
-  return "";
+  return null;
 }
 
 /// One ingredient bullet -> { amount, unit, text, links }
@@ -253,34 +304,104 @@ function parseIngredientLine(raw) {
   if (paren) {
     const inner = paren[1].replace(/^about\s+/i, "").trim();
     amount = parseAmount(inner);
-    unit = parseUnit(inner);
+    unit = parseUnit(inner)?.unit ?? "";
     rest = rest.slice(paren[0].length);
   }
 
   // "ea. Chinese sweet sausages", "each orange": a count word, not a name.
   rest = rest.replace(/^(?:ea\.?|each)\s+/i, "");
 
+  // "about 500 g", "a little over ½ cup": hedge words before the number.
+  rest = rest.replace(
+    /^(?:about|approx\.?|approximately|around|a little over|a little under|just over|just under|a good|a scant|scant)\s+/i,
+    "",
+  );
+
   if (amount === null) amount = parseAmount(rest);
   if (amount !== null) {
     rest = rest
-      .replace(/^\s*(?:\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d+(?:\.\d+)?\s*[–-]?\s*\d*|[½⅓⅔¼¾⅛])/, "")
+      .replace(
+        /^\s*(?:\d+\s+\d+\s*\/\s*\d+|\d+\s*[½⅓⅔¼¾⅛]|\d+\s*\/\s*\d+|\d+(?:\.\d+)?\s*[–-]?\s*\d*|[½⅓⅔¼¾⅛](?:\s*[–-]\s*(?:\d+(?:\.\d+)?|[½⅓⅔¼¾⅛]))?)/,
+        "",
+      )
+      // "4 ea. (400 g) medium onions": the count word follows the number.
+      .replace(/^\s*(?:ea\.?|each)\b[\s.]*/i, "")
       .trim();
   }
   // A parenthetical right after the amount is usually a metric/imperial
   // conversion: "200 g (7 oz) beef".
   rest = rest.replace(/^\([^)]*\)\s*/, "").trim();
 
-  if (!unit) unit = parseUnit(rest.slice(0, 24));
-  if (unit) {
-    const before = rest;
-    const stripped = before.replace(/^[^\s]*\s*/, "").trim();
-    // "* 4 [[Cookbook:Clove|cloves]]" is the spice, not a bare unit. If taking
-    // the unit word away leaves nothing, the word *was* the ingredient.
-    rest = stripped ? stripped.replace(/^of\s+/i, "").trim() : before;
+  // The unit word can sit behind an adjective ("3 large handfuls"), so take
+  // out the word that actually matched rather than the first word of the line.
+  const stripUnit = (found) => {
+    if (!found) return;
+    const words = rest.split(/\s+/);
+    const at = words.findIndex(
+      (w) => w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "").toLowerCase() === found.word.toLowerCase(),
+    );
+    if (at < 0) return;
+    const left = words.filter((_, i) => i !== at);
+    const named = left.some((w) => {
+      const bare = w.replace(/[^a-z0-9]/gi, "").toLowerCase();
+      return bare && !ADJECTIVES.has(bare) && !/^\d+$/.test(bare);
+    });
+    // "* 4 [[Cookbook:Clove|cloves]]" and "8 whole cloves" are the spice, not a
+    // bare unit: if only adjectives would be left, the unit word *was* the name.
+    if (!named) return;
+    const after = left
+      .join(" ")
+      .replace(/\s+of\s+/i, " ") // "small of coriander leaves"
+      .replace(/^of\s+/i, "")
+      .trim();
+    if (after) rest = after;
+  };
+
+  if (amount === null) {
+    // A unit word with no number in front of it: "* tbsp red curry paste",
+    // "packets Marie Biscuits". Left in place it swallows the name, and the
+    // line resolves to nothing.
+    const lead = parseUnit(rest);
+    if (lead && rest.trim().split(/\s+/).length > 1) {
+      unit = lead.unit;
+      stripUnit(lead);
+    }
+  }
+
+  if (!unit) {
+    const found = parseUnit(rest);
+    if (found) {
+      unit = found.unit;
+      stripUnit(found);
+    }
   }
 
   const targets = linkTargets(raw).filter((t) => !NOT_INGREDIENT.has(t));
   return { amount, unit, text: rest, links: targets, raw: line };
+}
+
+/// The visible ingredient name on a line, with the amount, unit, bracketed
+/// notes, trailing instruction and filler words taken off.
+function cleanedName(ing) {
+  return ing.text
+    .replace(/\([^)]*\)/g, " ") // (see notes), (optional)
+    .split(/\s*,\s*|\s+[–—]\s+/)[0] // ", sifted", " – made from kelp"
+    .replace(
+      /\s+(?:for|to)\s+(?:deep[- ]?fry(?:ing)?|shallow[- ]?fry(?:ing)?|fry(?:ing)?|garnish(?:ing)?|serv(?:e|ing)|dusting|greasing|coating|stuffing)\b.*$/i,
+      "",
+    )
+    .replace(/^(?:the\s+)?green parts? of\s+/i, "") // "green part of scallions"
+    .replace(/\b(?:ea\.?|each)\b/gi, " ")
+    .replace(/^of\s+/i, "") // "1.5 dl of chicken broth"
+    .replace(/^the\s+/i, "") // "the black pepper"
+    .replace(
+      // repeated, so "plus some more…" loses both words
+      /^(?:(?:or so|a few|a couple of|cake of|spoonful of|spoonful|plus|and|a|some|more|several)\s+(?:drops?\s+(?:of\s+)?)?)+/i,
+      "",
+    )
+    .replace(/^of\s+/i, "") // "½ of a medium sized onion"
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /// The names to try for one parsed line, most trustworthy first.
@@ -291,18 +412,7 @@ function parseIngredientLine(raw) {
 /// The links are the fallback, and the last link is the one the page treats as
 /// the ingredient ("1 cup milk or [[Cookbook:Coconut Milk|coconut milk]]").
 function candidateNames(ing) {
-  const cleaned = ing.text
-    .replace(/\([^)]*\)/g, " ") // (see notes), (optional)
-    .split(",")[0] // ", sifted", ", finely chopped"
-    .replace(
-      /\s+(?:for|to)\s+(?:deep[- ]?fry(?:ing)?|shallow[- ]?fry(?:ing)?|fry(?:ing)?|garnish(?:ing)?|serv(?:e|ing)|dusting|greasing|coating|stuffing)\b.*$/i,
-      "",
-    )
-    .replace(/^(?:the\s+)?green parts? of\s+/i, "") // "green part of scallions"
-    .replace(/\b(?:ea\.?|each)\b/gi, " ")
-    .replace(/^(?:a few|a couple of|a|some|several)\s+(?:drops?\s+(?:of\s+)?)?/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleaned = cleanedName(ing);
 
   // "Banana leaves or aluminium foil to wrap", "black vinegar and shredded
   // ginger": the first half is the ingredient, the rest is an alternative or
@@ -310,6 +420,51 @@ function candidateNames(ing) {
   const halves = cleaned.split(/\s+(?:or|and)\s+/i);
 
   return [cleaned, ...halves, ...ing.links.slice().reverse()].filter(Boolean);
+}
+
+/// A bare ingredient name with no instruction attached: "Banana leaves".
+/// Used to decide whether a line in an equipment list is really food.
+function isPlainName(ing) {
+  const t = ing.text
+    .replace(/\([^)]*\)/g, " ") // "(optional)", "(fresh or thawed)"
+    .replace(/[.,;:]+$/, "")
+    .trim();
+  if (!t) return false;
+  if (/[,;:]/.test(t)) return false; // a list of things
+  if (/\b(?:or|and|for|to|with|at least|about)\b/i.test(t)) return false;
+  return t.split(/\s+/).length <= 3;
+}
+
+/// Is this word a unit rather than part of a name? "tsp", "handfuls".
+function isUnitWord(word) {
+  const bare = word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "");
+  if (!bare) return false;
+  return UNIT_ALIASES.some(([re]) => re.test(bare));
+}
+
+/// The wording shown in the app: the recipe's own phrase when it says more
+/// than the catalog name. "dried soybeans" is displayed as written even though
+/// it matches the "soybeans" chip. An empty result means use the catalog name.
+function displayLabel(ing, matched, canonical) {
+  const text = cleanedName(ing);
+  // "Banana leaves or aluminium foil to wrap" names two things; the half that
+  // resolved is the ingredient. Otherwise the page's own words win, even when
+  // a wiki link is what made the match.
+  const source = /\s+(?:or|and)\s+/i.test(text) ? matched : text || matched;
+  const label = (source ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/[.,;:]+$/, "")
+    .trim()
+    .toLowerCase();
+  if (!label || label === canonical || label.length > 60) return "";
+  // What is left is sometimes only the measurement ("tsp salt", "handfuls
+  // dried") because the noun was a comma-separated note. Showing that is worse
+  // than showing the catalog name, so drop it.
+  const words = label.split(" ");
+  if (/^\d/.test(label)) return "";
+  if (words.some(isUnitWord)) return "";
+  if (words.every((w) => ADJECTIVES.has(w))) return "";
+  return label;
 }
 
 // Wikibooks recipes do not all use `==Ingredients==`. Plenty split the list
@@ -497,7 +652,16 @@ const ADJECTIVES = new Set([
   "crystallised", "crystallized", "shredded", "quartered", "pounded", "smashed",
   "pressed", "shelled", "skinned", "sifted", "soaked", "drained", "rinsed",
   "halved", "seeded", "deseeded", "trimmed", "thawed", "softened", "melted",
-  "cubed", "thinly", "thickly", "julienned", "peeled",
+  "cubed", "thinly", "thickly", "julienned", "peeled", "freshly", "heaping",
+  "heaped", "level", "rounded", "scant", "generous", "loosely", "firmly", "packed",
+  // temperature and cuisine words: "warm milk" is milk, "Japanese rice" is rice
+  "warm", "cold", "lukewarm", "iced", "chilled", "boiling", "room temperature",
+  "japanese", "chinese", "thai", "indian", "korean", "vietnamese", "italian",
+  "mexican", "french", "greek", "spanish", "turkish", "malaysian", "indonesian",
+  "filipino", "burmese", "himalayan", "kosher", "sea", "metric",
+  // colour and state words that only describe the ingredient after them
+  "orange", "yellow", "purple", "pink", "brown", "golden", "smooth",
+  "uncooked", "instant", "granulated", "powdered", "cracked", "split", "sized",
 ]);
 
 /// Resolve one raw ingredient name to a catalog name, or null to drop it.
@@ -510,16 +674,26 @@ function makeResolver(catalog, aliases) {
   };
 
   // Direct, then plural <-> singular: "bean sprout" -> "bean sprouts",
-  // "onions" -> "onion".
+  // "onions" -> "onion", "potatoes" -> "potato", "berries" -> "berry".
   const lookup = (key) => {
     const hit = direct(key);
     if (hit) return hit;
     if (!key.endsWith("s")) {
       const plural = direct(key + "s");
       if (plural) return plural;
-    } else if (!/(ss|us|is|ous)$/.test(key)) {
-      const singular = direct(key.slice(0, -1));
-      if (singular) return singular;
+    } else {
+      if (!/(ss|us|is|ous)$/.test(key)) {
+        const singular = direct(key.slice(0, -1));
+        if (singular) return singular;
+      }
+      if (/oes$/.test(key)) {
+        const o = direct(key.slice(0, -2));
+        if (o) return o;
+      }
+      if (/ies$/.test(key)) {
+        const y = direct(key.slice(0, -3) + "y");
+        if (y) return y;
+      }
     }
     return null;
   };
@@ -540,9 +714,12 @@ function makeResolver(catalog, aliases) {
     }
 
     // "white raisins" -> "raisins", "finely sliced white onion" -> "onion".
-    // Four trims, because recipe lines stack them up.
+    // Four trims, because recipe lines stack them up. "yellow/orange" counts
+    // as one adjective when both halves are colours.
+    const isAdj = (w) =>
+      ADJECTIVES.has(w) || (w.includes("/") && w.split("/").every((p) => ADJECTIVES.has(p)));
     let words = key.split(" ");
-    for (let i = 0; i < 4 && words.length > 1 && ADJECTIVES.has(words[0]); i++) {
+    for (let i = 0; i < 4 && words.length > 1 && isAdj(words[0]); i++) {
       words = words.slice(1);
       const hit = lookup(words.join(" "));
       if (hit) return hit;
@@ -556,7 +733,7 @@ function slug(title) {
   return title.replace(/^Cookbook:/, "");
 }
 
-async function build() {
+async function loadCatalog() {
   const { CATALOG_ADDITIONS, ALIASES } = await import("./ingredient-map.mjs");
 
   // 1. the catalog: the hand-written 65 first, then the additions
@@ -591,7 +768,11 @@ async function build() {
   for (const [name, , list] of CATALOG_ADDITIONS) for (const a of list) addAlias(a, name);
   for (const [alias, canonical] of Object.entries(ALIASES)) addAlias(alias, canonical);
 
-  const resolve = makeResolver(catalog, aliases);
+  return { current, catalog, aliases, conflicts, resolve: makeResolver(catalog, aliases) };
+}
+
+async function build() {
+  const { current, catalog, aliases, conflicts, resolve } = await loadCatalog();
 
   // 3. the recipes: hand-written ones first, then Wikibooks
   const out = {
@@ -617,6 +798,7 @@ async function build() {
       attribution: null,
       ingredients: r.ingredients.map((l) => ({
         name: l.name,
+        label: "",
         amount: l.amount,
         unit: l.unit ?? "",
       })),
@@ -625,7 +807,8 @@ async function build() {
 
   const { recipes: imported } = parseAll();
   const dropped = new Map(); // raw name -> times dropped
-  const stats = { kept: 0, dropped: 0, recipes: 0 };
+  const collapsedPairs = new Map(); // "canonical <- source wording" -> times
+  const stats = { kept: 0, dropped: 0, collapsed: 0, recipes: 0 };
 
   for (const r of imported) {
     const name = slug(r.page);
@@ -636,9 +819,13 @@ async function build() {
     const lines = new Map();
     const add = (ing) => {
       let canonical = null;
+      let matched = "";
       for (const candidate of candidateNames(ing)) {
         canonical = resolve(candidate);
-        if (canonical) break;
+        if (canonical) {
+          matched = candidate;
+          break;
+        }
       }
       if (!canonical) {
         stats.dropped++;
@@ -647,16 +834,27 @@ async function build() {
         return false;
       }
       stats.kept++;
-      if (!lines.has(canonical)) {
-        lines.set(canonical, { name: canonical, amount: ing.amount, unit: ing.unit });
+      if (lines.has(canonical)) {
+        stats.collapsed++;
+        const key = `${canonical} <- ${displayLabel(ing, matched, canonical) || matched}`;
+        collapsedPairs.set(key, (collapsedPairs.get(key) ?? 0) + 1);
+        return true;
       }
+      lines.set(canonical, {
+        name: canonical,
+        label: displayLabel(ing, matched, canonical),
+        amount: ing.amount,
+        unit: ing.unit,
+      });
       return true;
     };
 
     for (const ing of r.ingredients) add(ing);
-    // A hardware list can still name real food ("Banana leaves" to line a
-    // kuih tin). Keep those, and only those - "steamer" never resolves.
-    for (const ing of r.equipment) add(ing);
+    // A hardware list can still name real food - Kuih Bakul lines its tins
+    // with banana leaves, and that belongs in the ingredients. But "Banana
+    // leaves, zip-lock bags or shallow dishes for incubating" is a choice of
+    // containers, not an ingredient, so only a bare name counts.
+    for (const ing of r.equipment) if (isPlainName(ing)) add(ing);
 
     // A recipe stripped down to one ingredient isn't worth showing.
     if (lines.size < 2) continue;
@@ -680,6 +878,13 @@ async function build() {
   console.log(`catalog: ${out.ingredients.length} ingredients, ${aliases.size} aliases`);
   console.log(`recipes: ${out.recipes.length} (${current.recipes.length} hand-written, ${stats.recipes} imported)`);
   console.log(`ingredient lines: ${stats.kept} kept, ${stats.dropped} dropped`);
+  console.log(`collapsed: ${stats.collapsed} lines (two names that map to one ingredient)`);
+  if (collapsedPairs.size) {
+    console.log("  most common collapses:");
+    for (const [pair, n] of [...collapsedPairs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+      console.log(`    ${String(n).padStart(3)}  ${pair}`);
+    }
+  }
   if (conflicts.length) {
     console.log(`\nalias conflicts (${conflicts.length}):`);
     for (const c of conflicts.slice(0, 15)) console.log("  " + c);
@@ -698,6 +903,141 @@ async function build() {
   console.log(`\nwrote ${SEED_PATH}`);
 }
 
+// --- audit -----------------------------------------------------------------
+
+/// Compare the shipped seed against the source pages, recipe by recipe.
+///
+/// The build can only ever emit what the parser saw, so a plain re-parse would
+/// always agree with itself. This checks the things a re-parse cannot:
+///   phantom  - a stored line no source bullet supports
+///   missing  - a source bullet that names real food but produced no row
+///   equipment- a stored line that came only from the hardware list
+/// and writes a side-by-side file for eyeballing the rest.
+async function audit() {
+  const { resolve } = await loadCatalog();
+  const seed = JSON.parse(readFileSync(SEED_PATH, "utf8"));
+  const byUrl = new Map(seed.recipes.filter((r) => r.source_url).map((r) => [r.source_url, r]));
+  const { recipes } = parseAll();
+
+  const rows = [];
+  const flags = [];
+  const summary = { recipes: 0, phantom: 0, missing: 0, equipment: 0, wording: 0, clean: 0 };
+
+  const stem = (w) => w.replace(/(?:es|s)$/i, "");
+
+  for (const r of recipes) {
+    const stored = byUrl.get(r.url);
+    if (!stored) continue; // lost to a name collision with an earlier page
+    summary.recipes++;
+
+    const bullets = [...r.ingredients, ...r.equipment];
+    const before = flags.length;
+
+    // Everything the source page can produce, by the same rules the build uses.
+    const producible = new Set();
+    const resolvedBullets = [];
+    for (const b of bullets) {
+      let canonical = null;
+      for (const c of candidateNames(b)) {
+        canonical = resolve(c);
+        if (canonical) break;
+      }
+      resolvedBullets.push({ bullet: b, canonical });
+      if (canonical) producible.add(canonical);
+    }
+
+    for (const row of stored.ingredients) {
+      // 1. no bullet on the page can produce this ingredient at all
+      if (!producible.has(row.name)) {
+        summary.phantom++;
+        flags.push({ kind: "phantom", recipe: stored.name, name: row.name, label: row.label });
+        continue;
+      }
+
+      const support = resolvedBullets.filter((x) => x.canonical === row.name);
+
+      // 2. only the hardware list mentions it
+      if (support.every((x) => r.equipment.includes(x.bullet))) {
+        summary.equipment++;
+        flags.push({
+          kind: "equipment",
+          recipe: stored.name,
+          name: row.name,
+          label: row.label,
+          bullet: support[0].bullet.raw,
+        });
+        continue;
+      }
+
+      // 3. the wording shown is not on the page (typo, wrong link, leftover).
+      // Only meaningful when a label exists: an empty label means we are
+      // showing the catalog name, which the page is not expected to contain.
+      if (!row.label) continue;
+      const shown = row.label.toLowerCase();
+      const words = shown.split(/\s+/).filter((w) => w.length > 2).map(stem);
+      const onPage = support.some((x) => {
+        const hay = new Set(x.bullet.raw.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).map(stem));
+        return words.every((w) => hay.has(w) || [...hay].some((h) => h.startsWith(w) || w.startsWith(h)));
+      });
+      if (!onPage) {
+        summary.wording++;
+        flags.push({
+          kind: "wording",
+          recipe: stored.name,
+          name: row.name,
+          label: row.label,
+          bullet: support[0].bullet.raw,
+        });
+      }
+    }
+
+    // 4. a source line naming real food that produced no row
+    for (const { bullet, canonical } of resolvedBullets) {
+      if (!canonical) continue;
+      if (stored.ingredients.some((i) => i.name === canonical)) continue;
+      // An alternative container in the hardware list ("banana leaves,
+      // zip-lock bags or shallow dishes") is deliberately not an ingredient.
+      if (r.equipment.includes(bullet) && !isPlainName(bullet)) continue;
+      summary.missing++;
+      flags.push({ kind: "missing", recipe: stored.name, name: canonical, bullet: bullet.raw });
+    }
+
+    rows.push({
+      recipe: stored.name,
+      url: stored.source_url,
+      source: bullets.map((b) => b.raw),
+      stored: stored.ingredients.map(
+        (i) => `${i.label || i.name}${i.amount ? ` (${i.amount}${i.unit ? " " + i.unit : ""})` : ""}`,
+      ),
+      flags: flags.length - before,
+    });
+    if (flags.length === before) summary.clean++;
+  }
+
+  const out = join(CACHE, "audit.json");
+  writeFileSync(out, JSON.stringify({ summary, flags, rows }, null, 2) + "\n");
+
+  console.log(`audited ${summary.recipes} imported recipes`);
+  console.log(`  clean:     ${summary.clean}`);
+  console.log(`  phantom:   ${summary.phantom} stored lines no source bullet can produce`);
+  console.log(`  missing:   ${summary.missing} source lines that produced no row`);
+  console.log(`  equipment: ${summary.equipment} rows backed only by the hardware list`);
+  console.log(`  wording:   ${summary.wording} rows whose wording is not on the page`);
+  console.log(`\nwrote ${out}`);
+
+  for (const kind of ["phantom", "missing", "equipment", "wording"]) {
+    const list = flags.filter((f) => f.kind === kind);
+    if (!list.length) continue;
+    console.log(`\n--- ${kind} (${list.length}) ---`);
+    for (const f of list.slice(0, 30)) {
+      console.log(
+        `  ${f.recipe}: ${f.name}${f.label ? ` ["${f.label}"]` : ""}${f.bullet ? ` <- ${f.bullet}` : ""}`,
+      );
+    }
+    if (list.length > 30) console.log(`  ... and ${list.length - 30} more in the file`);
+  }
+}
+
 const cmd = process.argv[2] ?? "parse";
 if (cmd === "fetch") {
   await fetchAll();
@@ -707,6 +1047,8 @@ if (cmd === "fetch") {
   if (skipped.length) console.log(`\nskipped ${skipped.length}: ${skipped.slice(0, 8).join(", ")}...`);
 } else if (cmd === "build") {
   await build();
+} else if (cmd === "audit") {
+  await audit();
 } else if (cmd === "debug") {
   // Show why one page did or didn't parse: node tools/import-wikibooks.mjs debug "Cookbook:X"
   const pages = JSON.parse(readFileSync(join(CACHE, "wikitext.json"), "utf8"));
@@ -725,5 +1067,5 @@ if (cmd === "fetch") {
     }
   }
 } else {
-  console.log("usage: node tools/import-wikibooks.mjs fetch|parse|build|debug <title>");
+  console.log("usage: node tools/import-wikibooks.mjs fetch|parse|build|audit|debug <title>");
 }

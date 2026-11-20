@@ -430,7 +430,7 @@ function recipeCard(m) {
   // agrees with what the list below shows.
   const missingNames = m.ingredients
     .filter((l) => !l.in_pantry)
-    .map((l) => l.name);
+    .map((l) => l.label || l.name);
   const missing =
     m.missing > 0
       ? `<div class="missing">you still need
@@ -442,11 +442,11 @@ function recipeCard(m) {
     .map((l) => {
       const scaled = l.amount === null ? null : (l.amount * target) / base;
       return `
-      <li class="${l.in_pantry ? "have" : "need"}" data-name="${esc(l.name)}">
+      <li class="${l.in_pantry ? "have" : "need"}" data-name="${esc(l.label || l.name)}">
         <span class="qty" data-amount="${l.amount === null ? "" : l.amount}" data-unit="${esc(
           l.unit
         )}">${fmtQty(l.amount, l.unit, target, base)}</span>
-        <span class="iname">${esc(fmtName(l.name, scaled))}</span>
+        <span class="iname">${esc(fmtName(l.label || l.name, scaled))}</span>
       </li>`;
     })
     .join("");
