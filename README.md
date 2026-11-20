@@ -78,6 +78,11 @@ yourself with WhatsApp, Telegram, Phone Link, whatever you already use.
 
 ## Changelog
 
+**0.3.4** — the **🛒 Add 2 missing to list** button moved into the "you still
+need ..." row, next to the ingredient chips it puts on the list. It used to sit
+above the steps, a screen away from the chips that explain it. Same button, same
+behaviour — just where you would look for it.
+
 **0.3.3** — a clearer place to start. The app used to open on all 353 recipes at
 once, which said nothing about what to do next; the default view is now a short
 "start with what's in your kitchen" panel, and the full A–Z list sits behind

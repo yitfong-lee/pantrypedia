@@ -867,9 +867,14 @@ kbd {
   font-size: 12px;
 }
 
-/* the "🛒 Add N missing" button under a recipe's ingredient list */
-.card-actions {
-  padding: 0 14px 12px;
+/* the "🛒 Add N missing" button: it acts on the chips in this same row, so it
+   sits right after them instead of floating above the steps */
+.missing .add-missing {
+  margin-left: 4px;
+}
+
+.missing-label {
+  flex-shrink: 0;
 }
 
 /* ---------- shopping list drawer ---------- */

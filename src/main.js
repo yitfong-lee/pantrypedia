@@ -548,15 +548,29 @@ function recipeCard(m) {
         ? `<span class="badge close">1 missing</span>`
         : `<span class="badge far">${m.missing} missing</span>`;
 
+  // Only offer the shopping list when we're scoring against the REAL pantry.
+  // In quick-query mode "missing" means "not in the words you typed", so the
+  // button would promise more than the Rust side would actually add.
+  const addMissing =
+    m.missing > 0 && quickResults === null
+      ? `<button class="ghost tiny add-missing" data-add-missing="${m.id}"
+                 title="Put everything you still need for ${target} pax on the shopping list">
+           🛒 Add ${m.missing} missing to list
+         </button>`
+      : "";
+
   // "you still need ..." - derived from the ingredient lines, so it always
-  // agrees with what the list below shows.
+  // agrees with what the list above shows. The shopping-list button lives in
+  // this row: it acts on these chips, so it belongs next to them.
   const missingNames = m.ingredients
     .filter((l) => !l.in_pantry)
     .map((l) => l.label || l.name);
   const missing =
     m.missing > 0
-      ? `<div class="missing">you still need
+      ? `<div class="missing">
+          <span class="missing-label">you still need</span>
           ${missingNames.map((n) => `<span class="miss-chip">${esc(n)}</span>`).join(" ")}
+          ${addMissing}
         </div>`
       : "";
 
@@ -579,18 +593,6 @@ function recipeCard(m) {
     m.source === "user"
       ? `<button class="edit" data-edit-recipe="${m.id}" title="Edit this recipe">✎</button>
          <button class="del" data-del-recipe="${m.id}" title="Delete this recipe">✕</button>`
-      : "";
-
-  // Only offer the shopping list when we're scoring against the REAL pantry.
-  // In quick-query mode "missing" means "not in the words you typed", so the
-  // button would promise more than the Rust side would actually add.
-  const addMissing =
-    m.missing > 0 && quickResults === null
-      ? `<div class="card-actions">
-           <button class="ghost tiny add-missing" data-add-missing="${m.id}">
-             🛒 Add ${m.missing} missing to list
-           </button>
-         </div>`
       : "";
 
   return `
@@ -616,7 +618,6 @@ function recipeCard(m) {
     </div>
 
     <ul class="ing-lines">${lines}</ul>
-    ${addMissing}
     <div class="steps">${esc(m.steps)}</div>
     ${missing}
     ${credit(m)}

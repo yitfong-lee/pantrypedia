@@ -1,6 +1,6 @@
 [package]
 name = "pantrypedia"
-version = "0.3.3"
+version = "0.3.4"
 description = "PantryPedia - what can I cook with what's in my kitchen?"
 authors = ["you"]
 edition = "2024"
