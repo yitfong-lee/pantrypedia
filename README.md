@@ -5,7 +5,7 @@ Tell it what's in your kitchen, and it tells you what you can cook.
 Tap the ingredients you own, and every recipe is scored by how much of it you
 already have. Recipes that share something with your pantry float to the top;
 the rest are listed underneath, clearly separated. Open a recipe to see the
-quantities scaled to however many people you're feeding, and push whatever
+quantities scaled to how many people you're feeding, and push whatever
 you're missing onto a shopping list you can take to the shop on your phone.
 
 - **320 ingredients, 353 recipes** - Chinese, Japanese, Korean, Thai, Indian,
