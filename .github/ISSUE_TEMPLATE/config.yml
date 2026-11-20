@@ -1,0 +1,4 @@
+# Leave blank issues enabled so a friend can always just say "hey, this happened"
+# without having to fit it into a form. The templates above are there to make a
+# useful report easy when someone wants to use them.
+blank_issues_enabled: true

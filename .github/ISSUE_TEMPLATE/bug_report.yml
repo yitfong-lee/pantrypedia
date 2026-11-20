@@ -1,0 +1,51 @@
+name: Something isn't right
+description: Tell me what went wrong so I can fix it
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The version number is in the
+        top-left corner of the app, next to the PantryPedia title.
+  - type: dropdown
+    id: version
+    attributes:
+      label: Which version of PantryPedia?
+      options:
+        - v0.3.4
+        - v0.3.3 or older
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version (optional)
+      placeholder: e.g. Windows 11, Windows 10
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Tell me what you expected to happen too.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can I make it happen again? (optional)
+      placeholder: |
+        1. Open the app
+        2. Tick ...
+        3. See ...
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshot (optional)
+      description: Drag an image into this box if it helps explain the problem.
+    validations:
+      required: false
