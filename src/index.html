@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PantryPedia</title>
+  </head>
+  <body>
+    <header>
+      <h1>🥘 PantryPedia <span id="app-version" class="ver"></span></h1>
+
+      <!-- the one and only search bar: filters BOTH panels -->
+      <div id="search-wrap">
+        <input
+          id="search"
+          type="text"
+          placeholder="Search ingredients or recipes…"
+          autofocus
+        />
+        <button id="search-clear" class="ghost" hidden title="Clear">✕</button>
+      </div>
+
+      <button id="shopping-btn" class="ghost" title="Shopping list">
+        🛒 List <span id="shopping-count" class="pill">0</span>
+      </button>
+    </header>
+
+    <main>
+      <!-- left: pick what you have -->
+      <aside id="pantry-panel">
+        <p class="panel-hint">
+          Ingredients
+          <span id="pantry-count" class="muted">loading…</span>
+          <button id="add-ingredient-btn" class="ghost tiny" title="Add an ingredient you have">
+            + Add
+          </button>
+        </p>
+
+        <!-- hidden until you click "+ Add" -->
+        <form id="add-ingredient-form" class="add-form" hidden>
+          <input
+            id="new-ingredient-name"
+            type="text"
+            placeholder="Ingredient name (e.g. paneer)"
+            required
+          />
+          <input
+            id="new-ingredient-category"
+            type="text"
+            list="category-options"
+            placeholder="Category (e.g. Frozen)"
+          />
+          <datalist id="category-options"></datalist>
+          <div class="add-actions">
+            <button type="submit" class="primary">Add ingredient</button>
+            <button type="button" class="ghost" data-cancel>Cancel</button>
+          </div>
+        </form>
+
+        <div id="ingredient-groups"></div>
+      </aside>
+
+      <!-- right: what you can make -->
+      <section id="results-panel">
+        <div class="results-head">
+          <h2>What can I cook?</h2>
+          <button id="quick-run" class="ghost" hidden>Cook with these →</button>
+          <button id="add-recipe-btn" class="ghost" title="Add a recipe of your own">
+            + Add recipe
+          </button>
+        </div>
+
+        <!-- hidden until you click "+ Add recipe" -->
+        <form id="add-recipe-form" class="add-form" hidden>
+          <div class="name-row">
+            <input
+              id="new-recipe-name"
+              type="text"
+              placeholder="Recipe name (e.g. Paneer Butter Masala)"
+              required
+            />
+            <label class="serves-field">
+              Serves
+              <input
+                id="new-recipe-servings"
+                type="number"
+                min="1"
+                max="50"
+                step="1"
+                value="2"
+                required
+              />
+            </label>
+          </div>
+
+          <p class="field-label">
+            Ingredients
+            <span class="muted">amount is optional - leave it blank for "to taste"</span>
+          </p>
+          <div id="recipe-ing-rows" class="ing-rows"></div>
+          <button type="button" class="ghost tiny" id="add-ing-row">+ ingredient</button>
+
+          <textarea
+            id="new-recipe-steps"
+            rows="3"
+            placeholder="Steps - what do you actually do?"
+            required
+          ></textarea>
+          <div class="add-actions">
+            <button type="submit" class="primary" id="recipe-submit">Save recipe</button>
+            <button type="button" class="ghost" data-cancel>Cancel</button>
+          </div>
+        </form>
+
+        <div id="quick-banner" class="banner" hidden></div>
+
+        <div id="match-list"></div>
+      </section>
+    </main>
+
+    <!-- slides in from the right; always in the DOM so it can animate -->
+    <aside id="shopping-drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <h2>🛒 Shopping list</h2>
+        <span id="shopping-summary" class="muted"></span>
+        <button id="shopping-close" class="ghost tiny" title="Close">✕</button>
+      </div>
+
+      <form id="shop-add-form" class="shop-add">
+        <input
+          id="shop-add-input"
+          type="text"
+          placeholder="Add anything (e.g. dish soap)"
+        />
+        <button type="submit" class="primary tiny">Add</button>
+      </form>
+
+      <ul id="shop-list" class="shop-list"></ul>
+
+      <div class="drawer-foot">
+        <!-- Take it with you: the list is only useful in the shop. -->
+        <div class="foot-row">
+          <button id="copy-list" class="ghost tiny" title="Copy as text">
+            📋 Copy list
+          </button>
+          <button id="save-list" class="ghost tiny" title="Save a .txt to Downloads">
+            💾 Save .txt
+          </button>
+          <button id="qr-list" class="ghost tiny" title="Open the list on your phone over Wi-Fi">
+            📱 QR
+          </button>
+        </div>
+
+        <!-- shown after a save, with a shortcut to the file -->
+        <div id="saved-note" class="saved-note" hidden>
+          <span id="saved-note-text"></span>
+          <button id="open-folder" class="link">Open folder</button>
+        </div>
+
+        <div class="foot-row">
+          <button id="move-checked" class="primary tiny">Move checked to pantry</button>
+        </div>
+
+        <!-- Two ways to clear: the ticked-off lines, or the whole list. The
+             whole-list one asks twice, because that is real work to rebuild. -->
+        <div class="foot-row">
+          <button id="clear-checked" class="ghost tiny">Clear checked</button>
+          <button id="clear-all" class="ghost tiny" title="Remove every line from the list">
+            Clear all
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- one-line message area (errors, confirmations) -->
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- scan-to-phone: the list, served on the local network so the code can
+         hold a link (phones open links; they ignore plain text) -->
+    <div id="qr-modal" class="qr-modal" hidden>
+      <div class="qr-card">
+        <h3>Scan with your phone</h3>
+        <div id="qr-holder" class="qr-holder"></div>
+        <p id="qr-note" class="qr-note muted"></p>
+        <div id="qr-url" class="qr-url" hidden>
+          <code id="qr-url-text"></code>
+          <button id="qr-copy-url" class="ghost tiny">Copy link</button>
+        </div>
+        <button id="qr-close" class="ghost tiny">Close</button>
+      </div>
+    </div>
+
+    <!-- qrcode-generator (MIT, vendored): classic scripts so they define a
+         global before main.js runs. UTF8 second, it patches the encoder. -->
+    <script src="/vendor/qrcode.js"></script>
+    <script src="/vendor/qrcode_UTF8.js"></script>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
