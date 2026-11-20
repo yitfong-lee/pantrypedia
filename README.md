@@ -8,7 +8,7 @@ the rest are listed underneath, clearly separated. Open a recipe to see the
 quantities scaled to however many people you're feeding, and push whatever
 you're missing onto a shopping list you can take to the shop on your phone.
 
-- **167 ingredients, 347 recipes** — Chinese, Japanese, Korean, Thai, Indian,
+- **296 ingredients, 353 recipes** — Chinese, Japanese, Korean, Thai, Indian,
   Malaysian, Vietnamese and Indonesian, plus Western staples
 - **Aliases** — "green onion", "spring onion" and "scallion" are one chip, so a
   recipe written with different words still matches what you ticked
@@ -77,6 +77,17 @@ If sharing is blocked and you'd rather not touch firewall settings, **Copy** and
 yourself with WhatsApp, Telegram, Phone Link, whatever you already use.
 
 ## Changelog
+
+**0.3.1** — imported recipes were quietly losing ingredients: the importer threw
+away any line it couldn't match, so **Tub Tim Krob** shipped without water
+chestnuts and **Kuih Bakul** without glutinous rice flour or banana leaves. The
+importer now reads the line's own wording instead of only its wiki link (so
+"sticky/glutinous rice flour" stays glutinous), understands bracketed amounts
+and unfamiliar units, keeps food named in a *Special equipment* list, and skips
+*Warnings* and *Bibliography*. The catalog grew from 167 to 296 ingredients and
+dropped ingredient lines fell from 500 to 256 — and most of those are water and
+ice, which the app deliberately ignores. Six more recipes also became complete
+enough to include.
 
 **0.3.0** — the recipe list grew from 44 to 347, imported from Wikibooks
 Cookbook (see Credits). Ingredient matching is now alias-aware, so "green

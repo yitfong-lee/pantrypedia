@@ -296,11 +296,18 @@ fn ensure_catalog(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
              WHERE recipe.source = 'seed'",
             params![r.name, r.steps, r.servings, r.source_url, r.attribution],
         )?;
-        let recipe_id: i64 = tx.query_row(
-            "SELECT id FROM recipe WHERE name = ?1",
+        let recipe_id: i64 = match tx.query_row(
+            // Only a seed recipe: if you wrote your own recipe with the same
+            // name, the upsert above changed nothing, and taking its id here
+            // would wipe your ingredient list.
+            "SELECT id FROM recipe WHERE name = ?1 AND source = 'seed'",
             params![r.name],
             |row| row.get(0),
-        )?;
+        ) {
+            Ok(id) => id,
+            Err(rusqlite::Error::QueryReturnedNoRows) => continue,
+            Err(e) => return Err(Box::new(e)),
+        };
 
         // A seed recipe owns its ingredient list completely, so clear it
         // first - that way removed/renamed lines don't linger.
