@@ -159,7 +159,9 @@ which is licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/
 Each imported recipe shows its licence and a link to the original page, and the
 recipe text stays under that licence — share-alike applies to it.
 
-The 44 hand-written recipes and the whole app are original.
+The 44 hand-written recipes and the whole app are original. The app's code is
+[MIT licensed](LICENSE); the recipe data keeps its Wikibooks licence, spelled
+out in [SEED-DATA-LICENSE.md](SEED-DATA-LICENSE.md).
 
 Recipe data is regenerated with:
 
