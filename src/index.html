@@ -64,11 +64,18 @@
       <!-- right: what you can make -->
       <section id="results-panel">
         <div class="results-head">
-          <h2>What can I cook?</h2>
+          <h2 id="results-title">What can I cook?</h2>
+          <!-- only while there is text in the search bar; the label says which words -->
           <button id="quick-run" class="ghost" hidden>Cook with these →</button>
-          <button id="add-recipe-btn" class="ghost" title="Add a recipe of your own">
-            + Add recipe
-          </button>
+          <div class="head-actions">
+            <!-- the whole cookbook is a place you go on purpose, not the default -->
+            <button id="view-all-btn" class="ghost" title="Show every recipe, A to Z">
+              View all recipes
+            </button>
+            <button id="add-recipe-btn" class="ghost" title="Add a recipe of your own">
+              + Add recipe
+            </button>
+          </div>
         </div>
 
         <!-- hidden until you click "+ Add recipe" -->

@@ -78,6 +78,18 @@ yourself with WhatsApp, Telegram, Phone Link, whatever you already use.
 
 ## Changelog
 
+**0.3.3** — a clearer place to start. The app used to open on all 353 recipes at
+once, which said nothing about what to do next; the default view is now a short
+"start with what's in your kitchen" panel, and the full A–Z list sits behind
+**View all recipes** (on that panel, and in the header — where the same button
+turns into "← Back"). **Cook with "…" →** now names the words it will use: it
+cooks with the *search box*, not with your pantry chips, and the banner says so
+in as many words and offers **Back to my pantry**. Ingredient categories fold:
+each header shows how many of that group you have ("2/12") and, folded, lists
+them by name, so you can check and edit one corner of the pantry at a time.
+Typing in the search bar always unfolds groups, so a search can never hide its
+own hits.
+
 **0.3.2** — ingredient lists now read like the page they came from. 0.3.1 kept
 the right *ingredients* but showed the pantry name for each one, so **Homemade
 Tempeh** said "soybean" instead of "dried soybeans" and lost the words "cider

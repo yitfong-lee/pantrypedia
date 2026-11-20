@@ -143,12 +143,90 @@ main {
   padding: 4px 16px 16px;
 }
 
-.group h3 {
-  font-size: 11px;
+/* ---------- ingredient groups: one foldable section per category ---------- */
+
+.group {
+  margin-top: 14px;
+}
+
+/* The header is a button: it folds the group, and it always says how many of
+   this group's ingredients you have ("3/14"). */
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 0 8px;
+  background: none;
+  border: none;
   color: var(--muted);
-  text-transform: uppercase;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 1.2px;
-  margin: 14px 0 8px;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-head:hover {
+  color: var(--text);
+}
+
+/* ▸ when folded, ▾ when open */
+.group-head .chev {
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: transform 0.12s;
+}
+
+.group:not(.folded) .chev {
+  transform: rotate(90deg);
+}
+
+.group-head .gcount {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* a group you have something in: the count earns the accent colour */
+.group.has .gcount {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Folded: the chips go away and your picks are listed by name instead, so a
+   whole group can be read - and edited - in one line. */
+.group.folded .chips {
+  display: none;
+}
+
+.group-head .gpicked {
+  display: none;
+}
+
+.group.folded .group-head {
+  flex-wrap: wrap;
+  color: var(--text);
+}
+
+.group.folded .gpicked {
+  display: block;
+  flex-basis: 100%;
+  padding-left: 16px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chips {
@@ -233,6 +311,20 @@ main {
   margin-bottom: 12px;
 }
 
+/* the header must not reflow while the buttons change label */
+#results-title {
+  white-space: nowrap;
+}
+
+/* right-hand buttons travel together, so the title and the search-driven
+   button keep their place no matter which of them is visible */
+.head-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 #results-panel h2 {
   font-size: 14px;
   color: var(--muted);
@@ -264,7 +356,7 @@ main {
 }
 
 #add-recipe-btn {
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .primary {
@@ -431,6 +523,52 @@ main {
 
 .banner strong {
   color: var(--accent);
+}
+
+/* a text button inside a message strip ("Back to my pantry") */
+.banner .link {
+  display: inline;
+  margin-left: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ---------- cold start: one next step, not the whole cookbook ---------- */
+
+.start {
+  max-width: 520px;
+  margin: 44px auto;
+  padding: 26px 28px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.start-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.start-text {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+
+.start-text:last-child {
+  margin-bottom: 0;
+}
+
+#start-view-all {
+  margin-bottom: 16px;
 }
 
 .count {

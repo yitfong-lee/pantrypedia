@@ -27,11 +27,18 @@ let quickResults = null;
 let quickQueryText = "";
 let quickToken = 0; // guards against out-of-order replies
 
+// The whole cookbook is opt-in: it is a wall of 353 cards, which says nothing
+// about where to start. `browsingAll` is true only after you ask for it.
+let browsingAll = false;
+
 // The one search bar (in the header).
 const searchInput = document.querySelector("#search");
 const searchClear = document.querySelector("#search-clear");
 const quickRun = document.querySelector("#quick-run");
 const quickBanner = document.querySelector("#quick-banner");
+const viewAllBtn = document.querySelector("#view-all-btn");
+const resultsTitle = document.querySelector("#results-title");
+const resultsPanel = document.querySelector("#results-panel");
 
 // Add / delete UI.
 const addIngredientBtn = document.querySelector("#add-ingredient-btn");
@@ -114,17 +121,66 @@ searchInput.addEventListener("keydown", (e) => {
 
 quickRun.addEventListener("click", runQuickQuery);
 searchClear.addEventListener("click", clearSearch);
+quickBanner.addEventListener("click", (e) => {
+  if (e.target.closest("#quick-off")) clearSearch();
+});
 
-/// Show the ✕ and the "Cook with these" button only when they're useful.
+/// Show the ✕ and the "cook with these" button only when they're useful, and
+/// keep every button's label honest about what a click will do.
 function syncSearchButtons() {
-  const hasText = searchInput.value.trim().length > 0;
+  const text = searchInput.value.trim();
+  const hasText = text.length > 0;
+
   searchClear.hidden = !hasText && quickResults === null;
   quickRun.hidden = !hasText;
+  if (hasText) {
+    // The button cooks with the words in the box, not with the pantry chips,
+    // so it says those words back to you. "Cook with these ->" alone made
+    // people expect it to rank their pantry.
+    const short = text.length > 18 ? `${text.slice(0, 18)}…` : text;
+    quickRun.textContent = `Cook with “${short}” →`;
+  }
+
+  const n = matches.length;
+  const anyPantry = ingredients.some((i) => i.in_pantry);
+  viewAllBtn.textContent = browsingAll
+    ? anyPantry
+      ? "← Rank by my pantry"
+      : "← Back"
+    : n
+      ? `View all ${n} recipes`
+      : "View all recipes";
 }
+
+/// Show the whole cookbook, A to Z. Any search or quick query is dropped
+/// first, so "view all" really does mean all of them.
+function showAllRecipes() {
+  quickToken++; // cancel any in-flight reply
+  quickResults = null;
+  quickQueryText = "";
+  searchInput.value = "";
+  browsingAll = true;
+  renderAll();
+  resultsPanel.scrollTop = 0;
+}
+
+viewAllBtn.addEventListener("click", () => {
+  if (!browsingAll) {
+    showAllRecipes();
+    return;
+  }
+  browsingAll = false;
+  renderAll();
+  resultsPanel.scrollTop = 0;
+});
 
 // ---------------------------------------------------------------------------
 // Left panel: the ingredient picker
 // ---------------------------------------------------------------------------
+
+/// Categories you have folded shut. Kept outside the render so tapping a chip
+/// (which redraws every group) doesn't spring your groups back open.
+const collapsedGroups = new Set();
 
 function renderPantry() {
   const terms = searchTerms();
@@ -149,23 +205,38 @@ function renderPantry() {
     groups.get(ing.category).push(ing);
   }
 
-  document.querySelector("#ingredient-groups").innerHTML = order
+  const html = order
     .filter((cat) => groups.has(cat))
-    .map(
-      (cat) => `
-      <div class="group">
-        <h3>${esc(cat)}</h3>
-        <div class="chips">
-          ${groups.get(cat).map(chipHtml).join("")}
-        </div>
-      </div>`
-    )
+    .map((cat) => groupHtml(cat, groups.get(cat), terms.length > 0))
     .join("");
 
-  if (groups.size === 0) {
-    document.querySelector("#ingredient-groups").innerHTML =
-      `<p class="hint small">No ingredient matches “${esc(searchInput.value.trim())}”.</p>`;
-  }
+  document.querySelector("#ingredient-groups").innerHTML =
+    groups.size === 0
+      ? `<p class="hint small">No ingredient matches “${esc(searchInput.value.trim())}”.</p>`
+      : html;
+}
+
+/// One category, with a header you can click. The header always says how many
+/// of the group's ingredients you have ("3/14"); fold it and it lists them by
+/// name, so a whole group can be checked - and edited - without hunting for
+/// the lit-up chips. A search keeps groups open, or the hits would be hidden.
+function groupHtml(cat, items, searching) {
+  const have = items.filter((i) => i.in_pantry);
+  const folded = collapsedGroups.has(cat) && !searching;
+  const picked = have.map((i) => i.name).join(", ");
+  return `
+      <div class="group ${have.length ? "has" : ""} ${folded ? "folded" : ""}">
+        <button class="group-head" data-group="${esc(cat)}" aria-expanded="${!folded}"
+                title="Fold this group - folded, it lists just the ingredients you have">
+          <span class="chev" aria-hidden="true">▸</span>
+          <span class="gname">${esc(cat)}</span>
+          <span class="gcount">${have.length}/${items.length}</span>
+          ${have.length ? `<span class="gpicked" title="${esc(picked)}">${esc(picked)}</span>` : ""}
+        </button>
+        <div class="chips">
+          ${items.map(chipHtml).join("")}
+        </div>
+      </div>`;
 }
 
 /// One ingredient chip. Ingredients you added also get a ✕ to delete them.
@@ -179,6 +250,17 @@ function chipHtml(ing) {
 
 // Tap a chip: flip it in the database, then reload everything.
 document.querySelector("#ingredient-groups").addEventListener("click", async (e) => {
+  // Fold / unfold a category. The chips live inside the group, so folding is
+  // how you see just the ingredients you already have in it.
+  const head = e.target.closest(".group-head");
+  if (head) {
+    const cat = head.dataset.group;
+    if (collapsedGroups.has(cat)) collapsedGroups.delete(cat);
+    else collapsedGroups.add(cat);
+    renderPantry();
+    return;
+  }
+
   // ✕ on an ingredient you added
   const del = e.target.closest(".chip-del");
   if (del) {
@@ -197,6 +279,8 @@ document.querySelector("#ingredient-groups").addEventListener("click", async (e)
   const chip = e.target.closest(".chip");
   if (!chip) return;
   await invoke("toggle_ingredient", { id: Number(chip.dataset.id) });
+  // Ticking something means "rank by what I have", so leave the A-Z list.
+  browsingAll = false;
   await refresh();
 });
 
@@ -251,6 +335,7 @@ async function runQuickQuery() {
 
   quickResults = results;
   quickQueryText = text;
+  browsingAll = false; // typed words beat "show me everything"
   renderMatches();
   syncSearchButtons();
 }
@@ -285,6 +370,7 @@ function renderMatches() {
   const list = document.querySelector("#match-list");
   const terms = searchTerms();
   const usingQuick = quickResults !== null;
+  const anyPantry = ingredients.some((i) => i.in_pantry);
 
   // Quick query on: show what the typed ingredients can make.
   // Quick query off: score every recipe against your saved pantry.
@@ -292,17 +378,27 @@ function renderMatches() {
 
   quickBanner.hidden = !usingQuick;
   if (usingQuick) {
-    quickBanner.innerHTML = `Matching only what you typed:
-      <strong>${esc(quickQueryText)}</strong> - your pantry chips are ignored.
-      Press Enter to update.`;
+    // Say plainly which of the two lists is on screen, and give a way back.
+    // The old wording ("press Enter to update") left people unsure whether
+    // their pantry chips counted - they don't, while this is on.
+    quickBanner.innerHTML = `Only recipes that use
+      <strong>${esc(quickQueryText)}</strong> - your pantry chips are ignored
+      until you leave this view.
+      <button class="link" id="quick-off">Back to my pantry</button>`;
   }
 
-  const anyPantry = ingredients.some((i) => i.in_pantry);
+  resultsTitle.textContent = usingQuick
+    ? "Cooking with what you typed"
+    : browsingAll
+      ? "All recipes"
+      : "What can I cook?";
 
-  // Nothing tapped, nothing searched: show the whole cookbook instead of an
-  // empty panel, with a one-line nudge on how to rank it. Seeing what the app
-  // can actually do beats a hint that asks you to trust it first.
-  const browsing = !usingQuick && !anyPantry && !terms.length;
+  // Nothing tapped, nothing typed, nothing asked for: one clear next step
+  // beats 353 cards with no explanation.
+  if (!usingQuick && !browsingAll && !anyPantry && !terms.length) {
+    list.innerHTML = startHtml();
+    return;
+  }
 
   if (usingQuick && source.length === 0) {
     list.innerHTML = `<p class="hint">None of those words match a known ingredient.<br />
@@ -316,15 +412,16 @@ function renderMatches() {
     return;
   }
 
-  // Empty pantry = browsing the cookbook, so no split.
-  if (!usingQuick && !anyPantry) {
-    const intro = browsing
-      ? `<p class="hint browse">All ${shown.length} recipes, A to Z.
-           Tap ingredients on the left to rank them by what you can cook,
-           or type in the search bar and press <kbd>Enter</kbd>.</p>`
-      : `<p class="muted count">${shown.length} ${
-          shown.length === 1 ? "recipe" : "recipes"
-        }</p>`;
+  // One flat list when there is nothing to rank against: the whole cookbook
+  // because you asked for it, or a search with an empty pantry.
+  if (browsingAll || !anyPantry) {
+    const intro =
+      browsingAll && !terms.length
+        ? `<p class="hint browse">All ${shown.length} recipes, A to Z.
+             Tap ingredients on the left to rank them by what you can cook.</p>`
+        : `<p class="muted count">${shown.length} ${
+            shown.length === 1 ? "recipe" : "recipes"
+          }</p>`;
     list.innerHTML = intro + shown.map(recipeCard).join("");
     return;
   }
@@ -351,6 +448,31 @@ function renderMatches() {
   }
   list.innerHTML = html;
 }
+
+/// The cold-start panel: one obvious first move, plus the way to the cookbook
+/// for someone who would rather read recipes than tick ingredients.
+function startHtml() {
+  const n = matches.length;
+  return `
+    <div class="start">
+      <p class="start-title">Start with what's in your kitchen</p>
+      <p class="start-text">
+        Tap ingredients on the left. Recipes that use more of them rise to the top,
+        and the ones you can't cook yet drop below - nothing is hidden.
+      </p>
+      <button class="primary" id="start-view-all">View all ${n} recipes</button>
+      <p class="start-text">
+        Or use the search bar above: it filters as you type, and
+        <kbd>Enter</kbd> looks those words up in the recipes.
+      </p>
+    </div>`;
+}
+
+// The big button on the start panel does the same thing as the one in the
+// header - one code path, so the two can never disagree.
+document.querySelector("#match-list").addEventListener("click", (e) => {
+  if (e.target.closest("#start-view-all")) showAllRecipes();
+});
 
 // ---------------------------------------------------------------------------
 // Portions: scaling a recipe from its base servings to yours
