@@ -1,5 +1,7 @@
 # PantryPedia
 
+![PantryPedia ranking recipes against the ingredients in your pantry](docs/app-screenshot.png)
+
 Tell it what's in your kitchen, and it tells you what you can cook.
 
 Tap the ingredients you own, and every recipe is scored by how much of it you
