@@ -6,8 +6,21 @@
 param(
     [int]$Port = 9341,
     [Parameter(Mandatory = $true)][string]$Test,
-    [string]$Exe = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path "src-tauri\target\release\pantrypedia.exe")
+    [string]$Exe = ""
 )
+
+# $PSScriptRoot is empty while the param() defaults are evaluated, so resolve
+# paths here in the body instead of in the parameter declaration above.
+if (-not $Exe) {
+    $repo = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+    $Exe = Join-Path $repo "src-tauri\target\release\pantrypedia.exe"
+}
+if (-not [IO.Path]::IsPathRooted($Test)) {
+    $fromScript = Join-Path $PSScriptRoot $Test
+    if (Test-Path $fromScript) { $Test = $fromScript }
+}
+if (-not (Test-Path $Exe)) { throw "No release binary at $Exe - run 'npm run tauri build' first" }
+if (-not (Test-Path $Test)) { throw "No test script at $Test" }
 
 # A previous instance holds the WebView2 user-data folder, which makes the new
 # one come up with no browser at all (that was the ECONNREFUSED). Clear it out.
