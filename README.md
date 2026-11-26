@@ -13,7 +13,8 @@ you're missing onto a shopping list you can take to the shop on your phone.
 - **320 ingredients, 353 recipes** - Chinese, Japanese, Korean, Thai, Indian,
   Malaysian, Vietnamese and Indonesian, plus Western staples
 - **Aliases** — "green onion", "spring onion" and "scallion" are one chip, so a
-  recipe written with different words still matches what you ticked
+  recipe written with different words still matches what you ticked. Malay
+  names work too: search `beras`, `ayam`, `bawang merah` or `kicap`
 - **Add your own** ingredients and recipes; they're marked `mine` and can be
   edited or deleted. Seed data can't be deleted, only ignored
 - **Portions** — every recipe has a base serving count and every ingredient a
@@ -161,9 +162,14 @@ which is licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/
 Each imported recipe shows its licence and a link to the original page, and the
 recipe text stays under that licence — share-alike applies to it.
 
+Malay ingredient names (`beras`, `ayam`, `bawang merah`, `kicap`, …) come from
+the [PriceCatcher Item Lookup](https://data.gov.my/data-catalogue/lookup_item)
+on data.gov.my, under CC BY 4.0. They are extra aliases, so a search in Malay
+finds the same recipes as the English name.
+
 The 44 hand-written recipes and the whole app are original. The app's code is
-[MIT licensed](LICENSE); the recipe data keeps its Wikibooks licence, spelled
-out in [SEED-DATA-LICENSE.md](SEED-DATA-LICENSE.md).
+[MIT licensed](LICENSE); the recipe and alias data keep their own licences,
+spelled out in [SEED-DATA-LICENSE.md](SEED-DATA-LICENSE.md).
 
 Recipe data is regenerated with:
 

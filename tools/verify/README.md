@@ -35,6 +35,7 @@ port really answers, runs one Node script, then kills the app.
 | `verify-ui-034.js` | "Add N missing to list" sits in the "you still need" row and still fills the list |
 | `verify-clear-all.js` | First click arms Clear all, second clears, closing the drawer disarms it, and it auto-disarms after 5s |
 | `adversarial-inputs.js` | Hostile text (SQL injection, HTML/JS, `%` wildcards, unicode, 10k chars) through the search box and every storage field; checks nothing executes, the database survives, and path/URL fields refuse traversal and non-web links |
+| `verify-aliases-ms.js` | Malay names from PriceCatcher (`beras`, `ayam`, `bawang merah`, `kicap`) rank the same recipes as their English counterparts |
 
 Each script prints one JSON object. `false`, `null` or a missing field is the
 thing to look for — there are no assertion libraries involved.

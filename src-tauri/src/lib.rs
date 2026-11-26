@@ -212,6 +212,12 @@ fn add_column_if_missing(
 ///   node tools/import-wikibooks.mjs build
 const SEED_JSON: &str = include_str!("../data/seed.json");
 
+/// Malay names for the catalog, sourced from data.gov.my's PriceCatcher item
+/// lookup (CC BY 4.0). Kept separate from seed.json so regenerating the
+/// Wikibooks catalog never wipes them. Like the seed aliases, these are only
+/// ever added - an existing pantry or recipe is never rewritten.
+const ALIASES_MS_JSON: &str = include_str!("../data/aliases-ms.json");
+
 #[derive(Deserialize)]
 struct Seed {
     ingredients: Vec<SeedIngredient>,
@@ -265,6 +271,7 @@ struct SeedLine {
 /// launch. Batched, it is a single commit and the app opens immediately.
 fn ensure_catalog(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
     let seed: Seed = serde_json::from_str(SEED_JSON)?;
+    let aliases_ms: Vec<SeedAlias> = serde_json::from_str(ALIASES_MS_JSON)?;
     // `unchecked_transaction` works on a shared reference, which is all we have
     // here - the caller holds the Mutex, so nothing else can be mid-write.
     let tx = conn.unchecked_transaction()?;
@@ -287,8 +294,9 @@ fn ensure_catalog(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Aliases are additive too: a later release can only add spellings, it
-    // never removes one that an existing recipe might rely on.
-    for a in &seed.aliases {
+    // never removes one that an existing recipe might rely on. Malay names
+    // come second so they sit alongside the Wikibooks English spellings.
+    for a in seed.aliases.iter().chain(aliases_ms.iter()) {
         let Some(&ingredient_id) = id_of.get(a.name.as_str()) else {
             continue; // alias for an ingredient that isn't in this catalog
         };

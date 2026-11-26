@@ -195,11 +195,15 @@ function renderPantry() {
     // "green onion" still surfaces the "scallion" chip.
     const hit =
       !terms.length ||
-      terms.some(
-        (t) =>
-          name.includes(t) ||
-          (ing.aliases ?? []).some((a) => a.toLowerCase().includes(t))
-      );
+      terms.some((t) => {
+        if (name.includes(t)) return true;
+        // Aliases must match a whole word at the start, not any substring:
+        // "ayam" should find chicken, not "bayam" (spinach). Padding with
+        // spaces makes "bawang merah" work as a phrase too.
+        return (ing.aliases ?? []).some((a) =>
+          ` ${a.toLowerCase()} `.includes(` ${t}`)
+        );
+      });
     if (!hit) continue;
     if (!groups.has(ing.category)) groups.set(ing.category, []);
     groups.get(ing.category).push(ing);
