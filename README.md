@@ -24,6 +24,9 @@ you're missing onto a shopping list you can take to the shop on your phone.
   **QR code** to open the list on your phone over Wi-Fi
 - **Bought it?** Tick the line and "Move checked to pantry" puts it back in your
   pantry, which instantly re-scores every recipe
+- **EN / BM** — switch the app's own text between English and Bahasa Melayu.
+  The choice is remembered. Recipe titles and steps stay in the source language
+  (this is a UI-language toggle, not a recipe translator)
 
 ## Install
 

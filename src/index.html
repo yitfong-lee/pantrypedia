@@ -15,14 +15,19 @@
         <input
           id="search"
           type="text"
+          data-i18n-placeholder="searchPlaceholder"
           placeholder="Search ingredients or recipes…"
           autofocus
         />
-        <button id="search-clear" class="ghost" hidden title="Clear">✕</button>
+        <button id="search-clear" class="ghost" hidden data-i18n-title="searchClear" title="Clear">✕</button>
       </div>
 
-      <button id="shopping-btn" class="ghost" title="Shopping list">
-        🛒 List <span id="shopping-count" class="pill">0</span>
+      <!-- prototype: switches the app shell between English and Malay. The
+           catalog (recipe titles, steps, ingredient names) stays as it is. -->
+      <button id="lang-toggle" class="ghost tiny" title="Language / Bahasa">BM</button>
+
+      <button id="shopping-btn" class="ghost" data-i18n-title="shoppingList" title="Shopping list">
+        🛒 <span data-i18n="list">List</span> <span id="shopping-count" class="pill">0</span>
       </button>
     </header>
 
@@ -30,10 +35,10 @@
       <!-- left: pick what you have -->
       <aside id="pantry-panel">
         <p class="panel-hint">
-          Ingredients
-          <span id="pantry-count" class="muted">loading…</span>
-          <button id="add-ingredient-btn" class="ghost tiny" title="Add an ingredient you have">
-            + Add
+          <span data-i18n="ingredients">Ingredients</span>
+          <span id="pantry-count" class="muted" data-i18n="loading">loading…</span>
+          <button id="add-ingredient-btn" class="ghost tiny" data-i18n-title="addIngredientTitle" title="Add an ingredient you have">
+            <span data-i18n="add">+ Add</span>
           </button>
         </p>
 
@@ -42,6 +47,7 @@
           <input
             id="new-ingredient-name"
             type="text"
+            data-i18n-placeholder="newIngredientName"
             placeholder="Ingredient name (e.g. paneer)"
             required
           />
@@ -49,12 +55,13 @@
             id="new-ingredient-category"
             type="text"
             list="category-options"
+            data-i18n-placeholder="newIngredientCategory"
             placeholder="Category (e.g. Frozen)"
           />
           <datalist id="category-options"></datalist>
           <div class="add-actions">
-            <button type="submit" class="primary">Add ingredient</button>
-            <button type="button" class="ghost" data-cancel>Cancel</button>
+            <button type="submit" class="primary" data-i18n="addIngredient">Add ingredient</button>
+            <button type="button" class="ghost" data-cancel data-i18n="cancel">Cancel</button>
           </div>
         </form>
 
@@ -64,16 +71,16 @@
       <!-- right: what you can make -->
       <section id="results-panel">
         <div class="results-head">
-          <h2 id="results-title">What can I cook?</h2>
+          <h2 id="results-title" data-i18n="whatCanICook">What can I cook?</h2>
           <!-- only while there is text in the search bar; the label says which words -->
-          <button id="quick-run" class="ghost" hidden>Cook with these →</button>
+          <button id="quick-run" class="ghost" hidden data-i18n="cookWithThese">Cook with these →</button>
           <div class="head-actions">
             <!-- the whole cookbook is a place you go on purpose, not the default -->
-            <button id="view-all-btn" class="ghost" title="Show every recipe, A to Z">
+            <button id="view-all-btn" class="ghost" data-i18n-title="viewAllTitle" title="Show every recipe, A to Z">
               View all recipes
             </button>
-            <button id="add-recipe-btn" class="ghost" title="Add a recipe of your own">
-              + Add recipe
+            <button id="add-recipe-btn" class="ghost" data-i18n-title="addRecipeTitle" title="Add a recipe of your own">
+              <span data-i18n="addRecipe">+ Add recipe</span>
             </button>
           </div>
         </div>
@@ -84,11 +91,12 @@
             <input
               id="new-recipe-name"
               type="text"
+              data-i18n-placeholder="recipeName"
               placeholder="Recipe name (e.g. Paneer Butter Masala)"
               required
             />
             <label class="serves-field">
-              Serves
+              <span data-i18n="serves">Serves</span>
               <input
                 id="new-recipe-servings"
                 type="number"
@@ -102,21 +110,22 @@
           </div>
 
           <p class="field-label">
-            Ingredients
-            <span class="muted">amount is optional - leave it blank for "to taste"</span>
+            <span data-i18n="ingredientsLabel">Ingredients</span>
+            <span class="muted" data-i18n="amountOptional">amount is optional - leave it blank for "to taste"</span>
           </p>
           <div id="recipe-ing-rows" class="ing-rows"></div>
-          <button type="button" class="ghost tiny" id="add-ing-row">+ ingredient</button>
+          <button type="button" class="ghost tiny" id="add-ing-row" data-i18n="addIngredientRow">+ ingredient</button>
 
           <textarea
             id="new-recipe-steps"
             rows="3"
+            data-i18n-placeholder="steps"
             placeholder="Steps - what do you actually do?"
             required
           ></textarea>
           <div class="add-actions">
-            <button type="submit" class="primary" id="recipe-submit">Save recipe</button>
-            <button type="button" class="ghost" data-cancel>Cancel</button>
+            <button type="submit" class="primary" id="recipe-submit" data-i18n="saveRecipe">Save recipe</button>
+            <button type="button" class="ghost" data-cancel data-i18n="cancel">Cancel</button>
           </div>
         </form>
 
@@ -129,18 +138,19 @@
     <!-- slides in from the right; always in the DOM so it can animate -->
     <aside id="shopping-drawer" aria-hidden="true">
       <div class="drawer-head">
-        <h2>🛒 Shopping list</h2>
+        <h2 data-i18n="shoppingList">🛒 Shopping list</h2>
         <span id="shopping-summary" class="muted"></span>
-        <button id="shopping-close" class="ghost tiny" title="Close">✕</button>
+        <button id="shopping-close" class="ghost tiny" data-i18n-title="shopClose" title="Close">✕</button>
       </div>
 
       <form id="shop-add-form" class="shop-add">
         <input
           id="shop-add-input"
           type="text"
+          data-i18n-placeholder="shopAddPlaceholder"
           placeholder="Add anything (e.g. dish soap)"
         />
-        <button type="submit" class="primary tiny">Add</button>
+        <button type="submit" class="primary tiny" data-i18n="shopAdd">Add</button>
       </form>
 
       <ul id="shop-list" class="shop-list"></ul>
@@ -148,13 +158,13 @@
       <div class="drawer-foot">
         <!-- Take it with you: the list is only useful in the shop. -->
         <div class="foot-row">
-          <button id="copy-list" class="ghost tiny" title="Copy as text">
+          <button id="copy-list" class="ghost tiny" title="Copy as text" data-i18n="copyList">
             📋 Copy list
           </button>
-          <button id="save-list" class="ghost tiny" title="Save a .txt to Downloads">
+          <button id="save-list" class="ghost tiny" title="Save a .txt to Downloads" data-i18n="saveTxt">
             💾 Save .txt
           </button>
-          <button id="qr-list" class="ghost tiny" title="Open the list on your phone over Wi-Fi">
+          <button id="qr-list" class="ghost tiny" title="Open the list on your phone over Wi-Fi" data-i18n="qr">
             📱 QR
           </button>
         </div>
@@ -166,14 +176,14 @@
         </div>
 
         <div class="foot-row">
-          <button id="move-checked" class="primary tiny">Move checked to pantry</button>
+          <button id="move-checked" class="primary tiny" data-i18n="moveChecked">Move checked to pantry</button>
         </div>
 
         <!-- Two ways to clear: the ticked-off lines, or the whole list. The
              whole-list one asks twice, because that is real work to rebuild. -->
         <div class="foot-row">
-          <button id="clear-checked" class="ghost tiny">Clear checked</button>
-          <button id="clear-all" class="ghost tiny" title="Remove every line from the list">
+          <button id="clear-checked" class="ghost tiny" data-i18n="clearChecked">Clear checked</button>
+          <button id="clear-all" class="ghost tiny" data-i18n-title="clearAllTitle" title="Remove every line from the list">
             Clear all
           </button>
         </div>

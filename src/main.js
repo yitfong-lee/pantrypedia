@@ -1,5 +1,8 @@
 const { invoke } = window.__TAURI__.core;
 
+// UI language lives in a small dictionary, separate from the catalog data.
+import { t, lang, setLang, applyI18n } from "./i18n.js";
+
 // Show which build this is, so a friend's bug report can name a version.
 // getVersion() reads the same value the installer and About box use.
 window.__TAURI__.app
@@ -86,7 +89,7 @@ function renderAll() {
   syncSearchButtons();
 
   const n = ingredients.filter((i) => i.in_pantry).length;
-  document.querySelector("#pantry-count").textContent = `${n} selected`;
+  document.querySelector("#pantry-count").textContent = t("selected", { n });
 }
 
 // ---------------------------------------------------------------------------
@@ -138,18 +141,18 @@ function syncSearchButtons() {
     // so it says those words back to you. "Cook with these ->" alone made
     // people expect it to rank their pantry.
     const short = text.length > 18 ? `${text.slice(0, 18)}…` : text;
-    quickRun.textContent = `Cook with “${short}” →`;
+    quickRun.textContent = t("cookWith", { text: short });
   }
 
   const n = matches.length;
   const anyPantry = ingredients.some((i) => i.in_pantry);
   viewAllBtn.textContent = browsingAll
     ? anyPantry
-      ? "← Rank by my pantry"
-      : "← Back"
+      ? t("rankByPantry")
+      : t("back")
     : n
-      ? `View all ${n} recipes`
-      : "View all recipes";
+      ? t("viewAllCount", { n })
+      : t("viewAll");
 }
 
 /// Show the whole cookbook, A to Z. Any search or quick query is dropped
@@ -216,7 +219,9 @@ function renderPantry() {
 
   document.querySelector("#ingredient-groups").innerHTML =
     groups.size === 0
-      ? `<p class="hint small">No ingredient matches “${esc(searchInput.value.trim())}”.</p>`
+      ? `<p class="hint small">${t("noIngredientMatch", {
+          text: esc(searchInput.value.trim()),
+        })}</p>`
       : html;
 }
 
@@ -385,17 +390,17 @@ function renderMatches() {
     // Say plainly which of the two lists is on screen, and give a way back.
     // The old wording ("press Enter to update") left people unsure whether
     // their pantry chips counted - they don't, while this is on.
-    quickBanner.innerHTML = `Only recipes that use
-      <strong>${esc(quickQueryText)}</strong> - your pantry chips are ignored
-      until you leave this view.
-      <button class="link" id="quick-off">Back to my pantry</button>`;
+    quickBanner.innerHTML = `${t("quickBanner", {
+      text: esc(quickQueryText),
+    })}
+      <button class="link" id="quick-off">${t("backToPantry")}</button>`;
   }
 
   resultsTitle.textContent = usingQuick
-    ? "Cooking with what you typed"
+    ? t("cookingWith")
     : browsingAll
-      ? "All recipes"
-      : "What can I cook?";
+      ? t("allRecipes")
+      : t("whatCanICook");
 
   // Nothing tapped, nothing typed, nothing asked for: one clear next step
   // beats 353 cards with no explanation.
@@ -405,14 +410,15 @@ function renderMatches() {
   }
 
   if (usingQuick && source.length === 0) {
-    list.innerHTML = `<p class="hint">None of those words match a known ingredient.<br />
-      Try real ingredients like <em>eggs, rice, tofu, noodles</em>.</p>`;
+    list.innerHTML = `<p class="hint">${t("noWordsMatch")}</p>`;
     return;
   }
 
   const shown = source.filter((m) => matchesFilter(m, terms));
   if (shown.length === 0) {
-    list.innerHTML = `<p class="hint">No recipe matches “${esc(searchInput.value.trim())}”.</p>`;
+    list.innerHTML = `<p class="hint">${t("noRecipeMatch", {
+      text: esc(searchInput.value.trim()),
+    })}</p>`;
     return;
   }
 
@@ -421,11 +427,10 @@ function renderMatches() {
   if (browsingAll || !anyPantry) {
     const intro =
       browsingAll && !terms.length
-        ? `<p class="hint browse">All ${shown.length} recipes, A to Z.
-             Tap ingredients on the left to rank them by what you can cook.</p>`
-        : `<p class="muted count">${shown.length} ${
-            shown.length === 1 ? "recipe" : "recipes"
-          }</p>`;
+        ? `<p class="hint browse">${t("allIntro", { n: shown.length })}</p>`
+        : `<p class="muted count">${shown.length} ${t(
+            shown.length === 1 ? "recipeOne" : "recipeMany"
+          )}</p>`;
     list.innerHTML = intro + shown.map(recipeCard).join("");
     return;
   }
@@ -439,15 +444,17 @@ function renderMatches() {
   let html = "";
   if (haveSome.length) {
     html +=
-      `<div class="section-title">${usingQuick ? "Matches what you typed" : "Matches your pantry"}` +
+      `<div class="section-title">${t(
+        usingQuick ? "matchesTyped" : "matchesPantry"
+      )}` +
       ` <span class="muted">${haveSome.length}</span></div>` +
       haveSome.map(recipeCard).join("");
   }
   if (haveNone.length) {
     html +=
-      `<div class="section-title none">${
-        usingQuick ? "No shared ingredients" : "None of your ingredients yet"
-      } <span class="muted">${haveNone.length}</span></div>` +
+      `<div class="section-title none">${t(
+        usingQuick ? "noShared" : "noneYet"
+      )} <span class="muted">${haveNone.length}</span></div>` +
       `<div class="dim">${haveNone.map(recipeCard).join("")}</div>`;
   }
   list.innerHTML = html;
@@ -459,16 +466,10 @@ function startHtml() {
   const n = matches.length;
   return `
     <div class="start">
-      <p class="start-title">Start with what's in your kitchen</p>
-      <p class="start-text">
-        Tap ingredients on the left. Recipes that use more of them rise to the top,
-        and the ones you can't cook yet drop below - nothing is hidden.
-      </p>
-      <button class="primary" id="start-view-all">View all ${n} recipes</button>
-      <p class="start-text">
-        Or use the search bar above: it filters as you type, and
-        <kbd>Enter</kbd> looks those words up in the recipes.
-      </p>
+      <p class="start-title">${t("startTitle")}</p>
+      <p class="start-text">${t("startText1")}</p>
+      <button class="primary" id="start-view-all">${t("startViewAll", { n })}</button>
+      <p class="start-text">${t("startText2")}</p>
     </div>`;
 }
 
@@ -800,7 +801,7 @@ function closeRecipeForm() {
   ingRows.innerHTML = "";
   addIngredientRow();
   addRecipeForm.hidden = true;
-  recipeSubmit.textContent = "Save recipe";
+  recipeSubmit.textContent = t("saveRecipe");
 }
 
 /// Fill the form with an existing recipe and switch it to "edit" mode.
@@ -817,7 +818,7 @@ function startEditRecipe(id) {
   r.ingredients.forEach((l) => addIngredientRow(l));
   if (!r.ingredients.length) addIngredientRow();
   document.querySelector("#new-recipe-steps").value = r.steps;
-  recipeSubmit.textContent = "Save changes";
+  recipeSubmit.textContent = t("saveChanges");
 
   addRecipeForm.hidden = false;
   addRecipeForm.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -915,14 +916,11 @@ function renderShopping() {
   shoppingCount.textContent = String(left);
   shoppingCount.classList.toggle("has", left > 0);
   shoppingSummary.textContent = shopping.length
-    ? `${left} to buy${done ? ` · ${done} ticked` : ""}`
+    ? t("toBuy", { n: left }) + (done ? t("ticked", { n: done }) : "")
     : "";
 
   if (!shopping.length) {
-    shopList.innerHTML = `<li class="shop-empty">
-      Nothing to buy yet.<br />Open a recipe and tap
-      <strong>🛒 Add missing to list</strong>.
-    </li>`;
+    shopList.innerHTML = `<li class="shop-empty">${t("shopEmpty")}</li>`;
     return;
   }
 
@@ -1022,7 +1020,7 @@ function disarmClearAll() {
   clearAllArmed = false;
   if (clearAllTimer) clearTimeout(clearAllTimer);
   clearAllTimer = null;
-  clearAllBtn.textContent = "Clear all";
+  clearAllBtn.textContent = t("clearAll");
   clearAllBtn.classList.remove("armed");
 }
 
@@ -1034,7 +1032,7 @@ clearAllBtn.addEventListener("click", async () => {
 
   if (!clearAllArmed) {
     clearAllArmed = true;
-    clearAllBtn.textContent = `Sure? Delete ${shopping.length}`;
+    clearAllBtn.textContent = t("clearAllCount", { n: shopping.length });
     clearAllBtn.classList.add("armed");
     clearAllTimer = setTimeout(disarmClearAll, 5000);
     return;
@@ -1318,6 +1316,34 @@ function esc(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
   );
 }
+
+// ---------------------------------------------------------------------------
+// Language toggle (prototype: shell text only, catalog stays as it is)
+// ---------------------------------------------------------------------------
+
+const langToggle = document.querySelector("#lang-toggle");
+
+function paintLang() {
+  // The button shows the language you would switch TO, not the current one.
+  langToggle.textContent = lang() === "en" ? "BM" : "EN";
+  langToggle.title = lang() === "en" ? "Bahasa Melayu" : "English";
+}
+
+function applyLanguage() {
+  setLang(lang() === "en" ? "ms" : "en");
+  applyI18n();
+  paintLang();
+  // Text built in JS rather than markup has to be rebuilt too.
+  renderAll();
+  renderShopping();
+  toast(lang() === "ms" ? "Bahasa ditukar." : "Language switched.");
+}
+
+langToggle.addEventListener("click", applyLanguage);
+
+// Apply the saved choice before the first render, so nothing flashes English.
+applyI18n();
+paintLang();
 
 // Load the app: recipes/pantry first, then the shopping list.
 refresh();

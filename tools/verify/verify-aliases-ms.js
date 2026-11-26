@@ -50,18 +50,22 @@ out.malayKicap = await probe("kicap");
 
 // The decisive check: the Malay word must select the same chip and the same
 // recipe set as the English name it maps to.
+// The recipe lists must be identical. Chip lists differ on purpose: English
+// substring search shows every "rice..." name, while an alias shows the one
+// chip it names. What matters is that each Malay word finds its own chip and
+// does not accidentally catch a look-alike ("ayam" vs "bayam"/spinach).
 out.matches = {
-  riceChipSame:
-    JSON.stringify(out.englishRice.chips) === JSON.stringify(out.malayBeras.chips),
   riceCardsSame:
     JSON.stringify(out.englishRice.cards) === JSON.stringify(out.malayBeras.cards),
-  chickenChipSame:
-    JSON.stringify(out.englishChicken.chips) === JSON.stringify(out.malayAyam.chips),
   chickenCardsSame:
     JSON.stringify(out.englishChicken.cards) === JSON.stringify(out.malayAyam.cards),
+  riceChipFindsRice: out.malayBeras.chips.includes("rice"),
+  ayamChipFindsChicken: out.malayAyam.chips.includes("chicken breast"),
+  ayamChipSkipsSpinach: !out.malayAyam.chips.includes("spinach"),
   bawangMerahFindsShallot: out.malayBawangMerah.chips.includes("shallot"),
   kicapFindsSoySauce: out.malayKicap.chips.includes("soy sauce"),
 };
+out.malayAyamChips = out.malayAyam.chips;
 
 // Enter runs the Rust quick query against those same Malay words.
 out.quick = await evaluate(`(async () => {

@@ -20,7 +20,8 @@ $suites = @(
     @{ Port = 9392; Test = "verify-ui-033.js";   Name = "start panel, view all, foldable groups" },
     @{ Port = 9393; Test = "verify-ui-034.js";   Name = "add-missing beside the missing chips" },
     @{ Port = 9394; Test = "verify-clear-all.js"; Name = "Clear all" },
-    @{ Port = 9395; Test = "verify-aliases-ms.js"; Name = "Malay aliases" }
+    @{ Port = 9395; Test = "verify-aliases-ms.js"; Name = "Malay aliases" },
+    @{ Port = 9396; Test = "verify-i18n.js"; Name = "UI language toggle" }
 )
 
 foreach ($suite in $suites) {
