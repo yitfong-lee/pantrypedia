@@ -31,7 +31,7 @@ port really answers, runs one Node script, then kills the app.
 |---|---|
 | `verify-030.js` | 353 cards on the A–Z view, 320 ingredient chips, alias search ("green onion" → scallion), ranked split, source wording on recipe lines |
 | `verify-qr-link.js` | QR overlay, the LAN URL actually serves the list, a wrong path gets 404, the QR decodes to that URL, and the server stops on close |
-| `verify-ui-033.js` | Cold start shows the start panel with 0 cards, both "View all recipes" buttons, "Cook with 'milk'" wording and its way back, foldable groups |
+| `verify-ui-033.js` | Cold start shows the start panel with 0 cards, both "View all recipes" buttons, the passive "milk 32" chip that appears from typing alone (no button), its way back, and foldable groups |
 | `verify-ui-034.js` | "Add N missing to list" sits in the "you still need" row and still fills the list |
 | `verify-clear-all.js` | First click arms Clear all, second clears, closing the drawer disarms it, and it auto-disarms after 5s |
 | `adversarial-inputs.js` | Hostile text (SQL injection, HTML/JS, `%` wildcards, unicode, 10k chars) through the search box and every storage field; checks nothing executes, the database survives, and path/URL fields refuse traversal and non-web links |

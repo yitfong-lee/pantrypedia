@@ -72,8 +72,9 @@
       <section id="results-panel">
         <div class="results-head">
           <h2 id="results-title" data-i18n="whatCanICook">What can I cook?</h2>
-          <!-- only while there is text in the search bar; the label says which words -->
-          <button id="quick-run" class="ghost" hidden data-i18n="cookWithThese">Cook with these →</button>
+          <!-- A passive label, not a button: typing a word runs the ingredient
+               search automatically, so there is nothing here to click. -->
+          <span id="quick-chip" class="quick-chip" hidden></span>
           <div class="head-actions">
             <!-- the whole cookbook is a place you go on purpose, not the default -->
             <button id="view-all-btn" class="ghost" data-i18n-title="viewAllTitle" title="Show every recipe, A to Z">

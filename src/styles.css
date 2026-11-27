@@ -355,6 +355,31 @@ main {
   text-transform: none;
 }
 
+/* Passive label beside the results title. It looks nothing like a button:
+   typing already ran the search, so there is deliberately no click action. */
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 12px;
+  border-radius: 999px;
+  background: rgba(150, 120, 255, 0.1);
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.quick-chip .chip-count {
+  background: var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 #add-recipe-btn {
   flex-shrink: 0;
 }

@@ -27,6 +27,10 @@ if (-not (Test-Path $Test)) { throw "No test script at $Test" }
 & taskkill /F /IM pantrypedia.exe 2>&1 | Out-Null
 Start-Sleep -Milliseconds 800
 
+# localStorage (the chosen UI language) lives here, separate from the SQLite
+# database under APPDATA. Clear it too so every suite starts deterministically.
+Remove-Item "$env:LOCALAPPDATA\com.yitfong.pantrypedia\EBWebView" -Recurse -Force -ErrorAction SilentlyContinue
+
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$Port"
 $proc = Start-Process -FilePath $Exe -PassThru
 "started pid $($proc.Id) on port $Port"

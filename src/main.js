@@ -37,7 +37,7 @@ let browsingAll = false;
 // The one search bar (in the header).
 const searchInput = document.querySelector("#search");
 const searchClear = document.querySelector("#search-clear");
-const quickRun = document.querySelector("#quick-run");
+const quickChip = document.querySelector("#quick-chip");
 const quickBanner = document.querySelector("#quick-banner");
 const viewAllBtn = document.querySelector("#view-all-btn");
 const resultsTitle = document.querySelector("#results-title");
@@ -107,41 +107,47 @@ function searchTerms() {
     .filter(Boolean);
 }
 
+// Typing filters by name immediately, then (after a short pause) runs the
+// real ingredient search so the recipe list settles on the typed words with
+// no button to click. Enter skips the pause.
+let quickDebounce = null;
+
 searchInput.addEventListener("input", () => {
   renderPantry();
   renderMatches();
   syncSearchButtons();
+  if (quickDebounce) clearTimeout(quickDebounce);
+  quickDebounce = setTimeout(runQuickQuery, 300);
 });
 
 searchInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
+    if (quickDebounce) clearTimeout(quickDebounce);
     runQuickQuery();
   } else if (e.key === "Escape") {
     clearSearch();
   }
 });
 
-quickRun.addEventListener("click", runQuickQuery);
 searchClear.addEventListener("click", clearSearch);
 quickBanner.addEventListener("click", (e) => {
   if (e.target.closest("#quick-off")) clearSearch();
 });
 
-/// Show the ✕ and the "cook with these" button only when they're useful, and
-/// keep every button's label honest about what a click will do.
+/// Show the ✕ while there is text, and the passive chip once the ingredient
+/// search has produced a result. The chip is a label, never a button: there is
+/// nothing to click because typing already did the work.
 function syncSearchButtons() {
   const text = searchInput.value.trim();
   const hasText = text.length > 0;
 
   searchClear.hidden = !hasText && quickResults === null;
-  quickRun.hidden = !hasText;
-  if (hasText) {
-    // The button cooks with the words in the box, not with the pantry chips,
-    // so it says those words back to you. "Cook with these ->" alone made
-    // people expect it to rank their pantry.
+  quickChip.hidden = !hasText || quickResults === null;
+  if (!quickChip.hidden) {
     const short = text.length > 18 ? `${text.slice(0, 18)}…` : text;
-    quickRun.textContent = t("cookWith", { text: short });
+    quickChip.innerHTML = `${esc(short)} <span class="chip-count">${quickResults.length}</span>`;
+    quickChip.title = t("chipTitle", { n: quickResults.length });
   }
 
   const n = matches.length;
@@ -351,6 +357,8 @@ async function runQuickQuery() {
 
 function clearSearch() {
   quickToken++; // cancel any in-flight reply
+  if (quickDebounce) clearTimeout(quickDebounce);
+  quickDebounce = null;
   quickResults = null;
   quickQueryText = "";
   searchInput.value = "";

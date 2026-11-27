@@ -16,7 +16,7 @@ out.start = await evaluate(`({
   title: document.querySelector("#results-title").textContent.trim(),
   startButton: document.querySelector("#start-view-all").textContent.trim(),
   headerButton: document.querySelector("#view-all-btn").textContent.trim(),
-  quickRunHidden: document.querySelector("#quick-run").hidden,
+  quickChipHidden: document.querySelector("#quick-chip").hidden,
 })`);
 
 // 2. the start button really does show the whole cookbook
@@ -38,21 +38,25 @@ out.backToStart = await evaluate(`({
   headerButton: document.querySelector("#view-all-btn").textContent.trim(),
 })`);
 
-// 4. the "cook with" button names the words it will use, not just "these"
-out.quickLabel = await evaluate(`(() => {
+// 4. typing runs the search on its own; the chip is a passive label with the
+//    word and the number of recipes involved, never a button.
+out.quickLabel = await evaluate(`(async () => {
   const input = document.querySelector("#search");
   input.value = "milk";
   input.dispatchEvent(new Event("input", { bubbles: true }));
+  await new Promise(r => setTimeout(r, 1200));
+  const chip = document.querySelector("#quick-chip");
   return {
-    label: document.querySelector("#quick-run").textContent.trim(),
-    hidden: document.querySelector("#quick-run").hidden,
+    label: chip?.textContent.replace(/\\s+/g, " ").trim() ?? null,
+    hidden: chip ? chip.hidden : null,
+    tag: chip?.tagName ?? null,
+    oldButtonGone: !document.querySelector("#quick-run"),
+    title: chip?.title ?? null,
   };
 })()`);
 
-// 5. running it: banner says what is being ignored, and offers the way back
-out.quick = await evaluate(`(async () => {
-  document.querySelector("#quick-run").click();
-  await new Promise(r => setTimeout(r, 1200));
+// 5. the query has already run: banner says what is ignored, with a way back
+out.quick = await evaluate(`(() => {
   const b = document.querySelector("#quick-banner");
   return {
     bannerShown: !b.hidden,

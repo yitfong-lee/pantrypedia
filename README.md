@@ -15,6 +15,9 @@ you're missing onto a shopping list you can take to the shop on your phone.
 - **Aliases** — "green onion", "spring onion" and "scallion" are one chip, so a
   recipe written with different words still matches what you ticked. Malay
   names work too: search `beras`, `ayam`, `bawang merah` or `kicap`
+- **Instant search** — type a word and recipes using it appear on their own.
+  A quiet chip beside the heading shows the word and how many recipes it found;
+  there is no button to click. Press Enter to skip the short pause
 - **Add your own** ingredients and recipes; they're marked `mine` and can be
   edited or deleted. Seed data can't be deleted, only ignored
 - **Portions** — every recipe has a base serving count and every ingredient a
