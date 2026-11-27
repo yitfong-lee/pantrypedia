@@ -87,6 +87,15 @@ yourself with WhatsApp, Telegram, Phone Link, whatever you already use.
 
 ## Changelog
 
+**0.3.5** — PantryPedia now understands Malaysian groceries in Bahasa Melayu.
+Search `beras`, `ayam`, `bawang merah` or `kicap` and you get the same recipes as
+`rice`, `chicken`, `shallot` or `soy sauce` — 194 aliases from data.gov.my's
+PriceCatcher lookup. An **EN / BM** button in the header switches the app's own
+text between English and Malay and remembers your choice; recipe titles and
+steps stay in their source language. Typing also got simpler: matching recipes
+appear on their own, and the "Cook with …" button became a quiet `nasi 64` chip
+showing the word and how many recipes use it.
+
 **0.3.4** — the **🛒 Add 2 missing to list** button moved into the "you still
 need ..." row, next to the ingredient chips it puts on the list. It used to sit
 above the steps, a screen away from the chips that explain it. Same button, same
@@ -96,9 +105,9 @@ behaviour — just where you would look for it.
 once, which said nothing about what to do next; the default view is now a short
 "start with what's in your kitchen" panel, and the full A–Z list sits behind
 **View all recipes** (on that panel, and in the header — where the same button
-turns into "← Back"). **Cook with "…" →** now names the words it will use: it
-cooks with the *search box*, not with your pantry chips, and the banner says so
-in as many words and offers **Back to my pantry**. Ingredient categories fold:
+turns into "← Back"). The search banner now says plainly that it cooks with
+the *search box*, not with your pantry chips, and offers **Back to my pantry**.
+Ingredient categories fold:
 each header shows how many of that group you have ("2/12") and, folded, lists
 them by name, so you can check and edit one corner of the pantry at a time.
 Typing in the search bar always unfolds groups, so a search can never hide its

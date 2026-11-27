@@ -1,5 +1,6 @@
 // Capture a clean app screenshot for the GitHub social preview.
-// Launches through run-cdp.ps1 like the other suites.
+// Shows the 0.3.5 search chip: typing "nasi" ranks the recipes automatically
+// and the passive chip reports how many were found.
 import { writeFileSync } from "node:fs";
 import { connect } from "./cdp.mjs";
 
@@ -9,20 +10,26 @@ const { evaluate, send, waitFor } = await connect(port);
 
 await waitFor("!!document.querySelector('#match-list .start')");
 
-// A few everyday ingredients so the ranked list has something to show.
-await evaluate(`(async () => {
-  const invoke = window.__TAURI__.core.invoke;
-  const all = await invoke("get_ingredients");
-  const wanted = ["rice", "eggs", "butter", "garlic", "soy sauce", "milk", "onion", "chicken"];
-  for (const name of wanted) {
-    const i = all.find(x => x.name.toLowerCase() === name);
-    if (i && !i.in_pantry) await invoke("toggle_ingredient", { id: i.id });
-  }
+// Malay UI, as the new card advertises.
+await evaluate(`
+  localStorage.setItem("pantrypedia.lang", "ms");
   location.reload();
-})()`);
+`);
+await new Promise((r) => setTimeout(r, 1800));
+await waitFor("!!document.querySelector('#match-list .start')");
 
-await new Promise((r) => setTimeout(r, 1600));
-await waitFor("document.querySelectorAll('#match-list details.recipe').length > 0");
+// Type a Malay ingredient: the debounced search runs on its own.
+await evaluate(`(async () => {
+  const input = document.querySelector("#search");
+  input.value = "nasi";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await new Promise(r => setTimeout(r, 900));
+  return {
+    chip: document.querySelector("#quick-chip")?.textContent.trim() ?? null,
+    cards: document.querySelectorAll("#match-list details.recipe").length,
+  };
+})()`);
 
 // Render at 2x so the card can scale it down without going blurry.
 await send("Emulation.setDeviceMetricsOverride", {
@@ -39,13 +46,16 @@ const shot = await send("Page.captureScreenshot", {
 });
 writeFileSync(out, Buffer.from(shot.result.data, "base64"));
 
-// Leave the test database as we found it.
+// Leave no trace: clear the search and restore English for the next suite.
 await evaluate(`(async () => {
   const invoke = window.__TAURI__.core.invoke;
-  for (const i of await invoke("get_ingredients")) {
-    if (i.in_pantry) await invoke("toggle_ingredient", { id: i.id });
-  }
-  return "clean";
+  const input = document.querySelector("#search");
+  const back = document.querySelector("#quick-off");
+  if (back) back.click();
+  input.value = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  localStorage.setItem("pantrypedia.lang", "en");
+  await invoke("clear_shopping_list");
 })()`);
 
 console.log(`saved ${out}`);
